@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Calendar, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Upload, Trash2, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { WorkoutCard } from './components/WorkoutCard';
 import { BottomNav } from './components/BottomNav';
 import { TestDataButton } from './components/TestDataButton';
@@ -18,6 +20,9 @@ function App() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [weekDialogOpen, setWeekDialogOpen] = useState(false);
+  const [showImportSuccess, setShowImportSuccess] = useState(false);
+  const [showExportSuccess, setShowExportSuccess] = useState(false);
 
   useEffect(() => {
     initializeApp();
@@ -77,6 +82,8 @@ function App() {
 
     setIsLoading(true);
     try {
+      // Clear all existing data before import
+      await dbHelpers.clearAllData();
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
       const headers = lines[0].split(',').map(h => h.trim());
@@ -156,6 +163,10 @@ function App() {
       await dbHelpers.importWorkouts(workoutData);
       await loadWeeks();
       
+      // Show success feedback
+      setShowImportSuccess(true);
+      setTimeout(() => setShowImportSuccess(false), 2000);
+      
       event.target.value = '';
     } catch (error) {
       console.error('Error importing CSV:', error);
@@ -186,9 +197,30 @@ function App() {
       a.download = `fitflow-${activeWeek.week_id}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+      
+      // Show success feedback
+      setShowExportSuccess(true);
+      setTimeout(() => setShowExportSuccess(false), 2000);
     } catch (error) {
       console.error('Error exporting data:', error);
     }
+  };
+
+  const handleClearDatabase = async () => {
+    if (confirm('Are you sure you want to clear all workout data? This cannot be undone.')) {
+      try {
+        await dbHelpers.clearAllData();
+        await initializeApp();
+      } catch (error) {
+        console.error('Error clearing database:', error);
+      }
+    }
+  };
+
+  const handleWeekSelect = (week: Week) => {
+    setActiveWeek(week);
+    dbHelpers.setActiveWeek(week.week_id);
+    setWeekDialogOpen(false);
   };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -233,12 +265,38 @@ function App() {
             <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="text-center">
-              <div className="font-semibold">{activeWeek?.week_id}</div>
-              <div className="text-sm text-muted-foreground">
-                Week {activeWeek?.week_number}, {activeWeek?.year}
-              </div>
-            </div>
+            <Dialog open={weekDialogOpen} onOpenChange={setWeekDialogOpen}>
+              <DialogTrigger asChild>
+                <button className="text-center hover:bg-gray-50 px-4 py-2 rounded transition-colors">
+                  <div className="font-semibold">{activeWeek?.week_id}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Week {activeWeek?.week_number}, {activeWeek?.year}
+                  </div>
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Select Week</DialogTitle>
+                </DialogHeader>
+                <div className="max-h-[60vh] overflow-y-auto space-y-2">
+                  {weeks.map(week => (
+                    <Button
+                      key={week.week_id}
+                      variant={activeWeek?.week_id === week.week_id ? "default" : "outline"}
+                      className="w-full justify-start"
+                      onClick={() => handleWeekSelect(week)}
+                    >
+                      <div className="text-left">
+                        <div className="font-semibold">{week.week_id}</div>
+                        <div className="text-xs opacity-70">
+                          Week {week.week_number}, {week.year}
+                        </div>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
             <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -330,24 +388,52 @@ function App() {
               id="csv-upload"
               disabled={isLoading}
             />
-            <Button 
-              onClick={() => document.getElementById('csv-upload')?.click()}
-              disabled={isLoading}
-              className="w-full"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {isLoading ? 'Importing...' : 'Choose CSV File'}
-            </Button>
+            <Popover open={showImportSuccess}>
+              <PopoverTrigger asChild>
+                <Button 
+                  onClick={() => document.getElementById('csv-upload')?.click()}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {isLoading ? 'Importing...' : 'Choose CSV File'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" side="top">
+                <div className="flex items-center space-x-2 text-sm">
+                  <Check className="h-4 w-4 text-green-600" />
+                  <span>Imported successfully</span>
+                </div>
+              </PopoverContent>
+            </Popover>
             <TestDataButton />
             {activeWeek && (
-              <Button 
-                onClick={exportWeekData}
-                variant="outline"
-                className="w-full"
-              >
-                Export Current Week
-              </Button>
+              <Popover open={showExportSuccess}>
+                <PopoverTrigger asChild>
+                  <Button 
+                    onClick={exportWeekData}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Export Current Week
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" side="top">
+                  <div className="flex items-center space-x-2 text-sm">
+                    <Check className="h-4 w-4 text-green-600" />
+                    <span>Exported successfully</span>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
+            <Button 
+              onClick={handleClearDatabase}
+              variant="destructive"
+              className="w-full"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear All Data
+            </Button>
           </div>
         </CardContent>
       </Card>
