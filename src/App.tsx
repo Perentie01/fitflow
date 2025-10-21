@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Calendar, ChevronLeft, ChevronRight, Upload, Trash2, Check } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Upload, Trash2, Check, Copy } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { WorkoutCard } from './components/WorkoutCard';
@@ -23,6 +23,7 @@ function App() {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [showImportSuccess, setShowImportSuccess] = useState(false);
   const [showExportSuccess, setShowExportSuccess] = useState(false);
+  const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -514,58 +515,51 @@ function App() {
 
       <Card>
         <CardHeader>
-          <CardTitle>TSV Format Example</CardTitle>
+          <CardTitle>AI Workout Generation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="text-sm space-y-2">
+            <p className="font-medium">Copy instructions + example for AI tools (ChatGPT, Claude, etc.):</p>
+            <div className="bg-muted p-3 rounded text-xs space-y-2">
+              <p><strong>Required fields:</strong> block_id, day, exercise_name, category, type, sets, rest, cues</p>
+              <p><strong>Optional fields:</strong> reps, weight, duration, guidance, resistance, description</p>
+              <p><strong>Categories:</strong> Intent, Warm-up, Primary, Secondary, Additional, Cool-down</p>
+              <p><strong>Types:</strong> weights, time, mindset</p>
+              <p><strong>Intent exercises:</strong> Use category=Intent, type=mindset for mental prep</p>
+              <p><strong>Guidance:</strong> Instructions like "70% 1RM" or "per side"</p>
+              <p><strong>Resistance:</strong> For non-weight exercises like "Red band"</p>
+            </div>
+          </div>
           <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
 {`block_id	day	exercise_name	category	type	sets	reps	weight	duration	rest	cues	guidance	resistance	description
 Week 1	Day 1	Focus	Intent	mindset	1			2	0	Today's goal: build power, focus on explosive movement			
 Week 1	Day 1	Squats	Primary	weights	3	10	100		90	Keep chest up, drive through heels	70% 1RM		Full squat description here
 Week 1	Day 1	Band Pull	Additional	weights	3	15			60	Control the movement, squeeze at the top		Red band	`}
           </pre>
-          <Button 
-            onClick={() => {
-              const tsvExample = `block_id\tday\texercise_name\tcategory\ttype\tsets\treps\tweight\tduration\trest\tcues\tguidance\tresistance\tdescription\nWeek 1\tDay 1\tFocus\tIntent\tmindset\t1\t\t\t2\t0\tToday's goal: build power, focus on explosive movement\t\t\t\nWeek 1\tDay 1\tSquats\tPrimary\tweights\t3\t10\t100\t\t90\tKeep chest up, drive through heels\t70% 1RM\t\tFull squat description here\nWeek 1\tDay 1\tBand Pull\tAdditional\tweights\t3\t15\t\t\t60\tControl the movement, squeeze at the top\t\tRed band\t`;
-              navigator.clipboard.writeText(tsvExample);
-            }}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            Copy Example TSV
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>LLM Instructions for Workout Generation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="text-sm space-y-2">
-            <p className="font-medium">Use these instructions to generate workouts with AI:</p>
-            <div className="bg-muted p-3 rounded text-xs space-y-2">
-              <p><strong>Required fields:</strong> block_id, day, exercise_name, category, type, sets, rest, cues</p>
-              <p><strong>Optional fields:</strong> reps, weight, duration, guidance, resistance, description</p>
-              <p><strong>Categories:</strong> Intent, Warm-up, Primary, Secondary, Additional, Cool-down</p>
-              <p><strong>Types:</strong> weights, time, mindset</p>
-              <p><strong>Intent exercises:</strong> Use category=Intent, type=mindset for mental prep (no sets/reps shown)</p>
-              <p><strong>Guidance:</strong> Use for instructions like "70% 1RM" or "per side"</p>
-              <p><strong>Resistance:</strong> Use for non-weight exercises like "Red band" or "Bodyweight"</p>
-              <p><strong>Description:</strong> Detailed exercise instructions (tappable on exercise name)</p>
-            </div>
-          </div>
-          <Button 
-            onClick={() => {
-              const llmInstructions = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nAdd detailed descriptions for complex exercises.\n\nExample format (columns separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\tFull description`;
-              navigator.clipboard.writeText(llmInstructions);
-            }}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            Copy LLM Instructions
-          </Button>
+          <Popover open={showCopySuccess}>
+            <PopoverTrigger asChild>
+              <Button 
+                onClick={() => {
+                  const combined = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nAdd detailed descriptions for complex exercises.\n\nExample format (columns separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\tFull squat description here\nWeek 1\\tDay 1\\tBand Pull\\tAdditional\\tweights\\t3\\t15\\t\\t\\t60\\tControl the movement, squeeze at the top\\t\\tRed band\\t`;
+                  navigator.clipboard.writeText(combined);
+                  setShowCopySuccess(true);
+                  setTimeout(() => setShowCopySuccess(false), 2000);
+                }}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy for AI Generation
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" side="top">
+              <div className="flex items-center space-x-2 text-sm">
+                <Check className="h-4 w-4 text-green-600" />
+                <span>Copied to clipboard!</span>
+              </div>
+            </PopoverContent>
+          </Popover>
         </CardContent>
       </Card>
     </div>

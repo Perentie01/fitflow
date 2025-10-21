@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Timer, Weight, CheckCircle, Brain, ChevronDown, ChevronUp } from 'lucide-react';
+import { Timer, Weight, Check, Brain, ChevronDown, ChevronUp } from 'lucide-react';
 import { Workout, Progress, dbHelpers } from '../lib/database';
 
 interface WorkoutCardProps {
@@ -185,7 +185,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
               className="w-full"
               variant="outline"
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <Check className="h-4 w-4 mr-2" />
               Log Progress
             </Button>
             {showSaveSuccess && (
