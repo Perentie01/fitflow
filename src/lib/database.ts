@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 
 export interface Workout {
   id?: number;
-  week_id: string;
+  block_id: string;
   day: string;
   exercise_name: string;
   category: 'Warm-up' | 'Primary' | 'Secondary' | 'Additional' | 'Cool-down';
@@ -26,29 +26,55 @@ export interface Progress {
   notes?: string;
 }
 
-export interface Week {
+export interface Block {
   id?: number;
-  week_id: string;
-  week_number: number;
-  year: number;
-  start_date: Date;
-  end_date: Date;
+  block_id: string;
+  block_name: string;
   is_active: number;
+  created_at: Date;
 }
 
 // Define the database schema
 export class FitFlowDatabase extends Dexie {
   workouts!: Dexie.Table<Workout, number>;
   progress!: Dexie.Table<Progress, number>;
-  weeks!: Dexie.Table<Week, number>;
+  blocks!: Dexie.Table<Block, number>;
 
   constructor() {
     super('FitFlowDatabase');
     
-    this.version(1).stores({
-      workouts: '++id, week_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues',
+    // Version 2: Migrated from weeks to blocks
+    this.version(2).stores({
+      workouts: '++id, block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues',
       progress: '++id, workout_id, set_number, completed_reps, completed_weight, completed_duration, completed_at, notes',
-      weeks: '++id, week_id, week_number, year, start_date, end_date, is_active'
+      blocks: '++id, block_id, block_name, is_active, created_at'
+    }).upgrade(async tx => {
+      // Migration: rename week_id to block_id in workouts
+      const workouts = await tx.table('workouts').toArray();
+      await tx.table('workouts').clear();
+      
+      const migratedWorkouts = workouts.map(w => ({
+        ...w,
+        block_id: (w as any).week_id || (w as any).block_id,
+        week_id: undefined
+      }));
+      
+      await tx.table('workouts').bulkAdd(migratedWorkouts);
+      
+      // Migration: convert weeks to blocks
+      const weeks = await tx.table('weeks').toArray();
+      await tx.table('blocks').clear();
+      
+      const migratedBlocks = weeks.map(w => ({
+        block_id: (w as any).week_id,
+        block_name: (w as any).week_id,
+        is_active: (w as any).is_active,
+        created_at: new Date()
+      }));
+      
+      if (migratedBlocks.length > 0) {
+        await tx.table('blocks').bulkAdd(migratedBlocks);
+      }
     });
   }
 }
@@ -58,22 +84,22 @@ export const db = new FitFlowDatabase();
 
 // Helper functions for database operations
 export const dbHelpers = {
-  // Week operations
-  async createWeek(weekData: Omit<Week, 'id'>): Promise<number> {
-    return await db.weeks.add(weekData);
+  // Block operations
+  async createBlock(blockData: Omit<Block, 'id'>): Promise<number> {
+    return await db.blocks.add(blockData);
   },
 
-  async getActiveWeek(): Promise<Week | undefined> {
-    return await db.weeks.where('is_active').equals(1).first();
+  async getActiveBlock(): Promise<Block | undefined> {
+    return await db.blocks.where('is_active').equals(1).first();
   },
 
-  async getAllWeeks(): Promise<Week[]> {
-    return await db.weeks.orderBy('year').reverse().toArray();
+  async getAllBlocks(): Promise<Block[]> {
+    return await db.blocks.orderBy('created_at').reverse().toArray();
   },
 
-  async setActiveWeek(weekId: string): Promise<void> {
-    await db.weeks.where('is_active').equals(1).modify({ is_active: 0 });
-    await db.weeks.where('week_id').equals(weekId).modify({ is_active: 1 });
+  async setActiveBlock(blockId: string): Promise<void> {
+    await db.blocks.where('is_active').equals(1).modify({ is_active: 0 });
+    await db.blocks.where('block_id').equals(blockId).modify({ is_active: 1 });
   },
 
   // Workout operations
@@ -81,16 +107,16 @@ export const dbHelpers = {
     return await db.workouts.bulkAdd(workouts);
   },
 
-  async getWorkoutsByWeek(weekId: string): Promise<Workout[]> {
-    return await db.workouts.where('week_id').equals(weekId).toArray();
+  async getWorkoutsByBlock(blockId: string): Promise<Workout[]> {
+    return await db.workouts.where('block_id').equals(blockId).toArray();
   },
 
-  async getWorkoutsByWeekAndDay(weekId: string, day: string): Promise<Workout[]> {
-    return await db.workouts.where({ week_id: weekId, day: day }).toArray();
+  async getWorkoutsByBlockAndDay(blockId: string, day: string): Promise<Workout[]> {
+    return await db.workouts.where({ block_id: blockId, day: day }).toArray();
   },
 
-  async deleteWorkoutsByWeek(weekId: string): Promise<number> {
-    return await db.workouts.where('week_id').equals(weekId).delete();
+  async deleteWorkoutsByBlock(blockId: string): Promise<number> {
+    return await db.workouts.where('block_id').equals(blockId).delete();
   },
 
   // Progress operations
@@ -105,16 +131,16 @@ export const dbHelpers = {
     return await db.progress.where('workout_id').equals(workoutId).toArray();
   },
 
-  async getProgressByWeek(weekId: string): Promise<Progress[]> {
-    const workouts = await this.getWorkoutsByWeek(weekId);
+  async getProgressByBlock(blockId: string): Promise<Progress[]> {
+    const workouts = await this.getWorkoutsByBlock(blockId);
     const workoutIds = workouts.map(w => w.id!);
     return await db.progress.where('workout_id').anyOf(workoutIds).toArray();
   },
 
   // Export operations
-  async exportWeekData(weekId: string): Promise<{ workouts: Workout[], progress: Progress[] }> {
-    const workouts = await this.getWorkoutsByWeek(weekId);
-    const progress = await this.getProgressByWeek(weekId);
+  async exportBlockData(blockId: string): Promise<{ workouts: Workout[], progress: Progress[] }> {
+    const workouts = await this.getWorkoutsByBlock(blockId);
+    const progress = await this.getProgressByBlock(blockId);
     return { workouts, progress };
   },
 
@@ -122,56 +148,30 @@ export const dbHelpers = {
   async clearAllData(): Promise<void> {
     await db.workouts.clear();
     await db.progress.clear();
-    await db.weeks.clear();
-  },
-
-  // Generate week ID based on year and week number
-  generateWeekId(year: number, weekNumber: number): string {
-    return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
-  },
-
-  // Get current week information
-  getCurrentWeekInfo() {
-    const now = new Date();
-    const year = now.getFullYear();
-    
-    // Calculate week number (ISO week)
-    const startOfYear = new Date(year, 0, 1);
-    const pastDaysOfYear = (now.getTime() - startOfYear.getTime()) / 86400000;
-    const weekNumber = Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
-    
-    // Calculate start and end dates of the week
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    
-    return {
-      year,
-      weekNumber,
-      weekId: this.generateWeekId(year, weekNumber),
-      startDate: startOfWeek,
-      endDate: endOfWeek
-    };
+    await db.blocks.clear();
   }
 };
 
-// Initialize current week if it doesn't exist
-export async function initializeCurrentWeek(): Promise<{ year: number, weekNumber: number, weekId: string, startDate: Date, endDate: Date }> {
-  const currentWeekInfo = dbHelpers.getCurrentWeekInfo();
-  const existingWeek = await db.weeks.where('week_id').equals(currentWeekInfo.weekId).first();
+// Initialize with a default block if database is empty
+export async function initializeDefaultBlock(): Promise<Block> {
+  const existingBlocks = await db.blocks.toArray();
   
-  if (!existingWeek) {
-    await dbHelpers.createWeek({
-      week_id: currentWeekInfo.weekId,
-      week_number: currentWeekInfo.weekNumber,
-      year: currentWeekInfo.year,
-      start_date: currentWeekInfo.startDate,
-      end_date: currentWeekInfo.endDate,
-      is_active: 1
-    });
+  if (existingBlocks.length === 0) {
+    const defaultBlock: Omit<Block, 'id'> = {
+      block_id: 'Block 1',
+      block_name: 'Block 1',
+      is_active: 1,
+      created_at: new Date()
+    };
+    
+    await dbHelpers.createBlock(defaultBlock);
+    return { ...defaultBlock, id: 1 };
   }
   
-  return currentWeekInfo;
+  // Return active block or first block
+  const activeBlock = await dbHelpers.getActiveBlock();
+  if (activeBlock) return activeBlock;
+  
+  return existingBlocks[0];
 }
 

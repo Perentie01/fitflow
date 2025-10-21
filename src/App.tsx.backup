@@ -9,67 +9,67 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { WorkoutCard } from './components/WorkoutCard';
 import { BottomNav } from './components/BottomNav';
 import { TestDataButton } from './components/TestDataButton';
-import { dbHelpers, initializeDefaultBlock, Workout, Block } from './lib/database';
+import { dbHelpers, initializeCurrentWeek, Workout, Week } from './lib/database';
 import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('workouts');
-  const [blocks, setBlocks] = useState<Block[]>([]);
-  const [activeBlock, setActiveBlock] = useState<Block | null>(null);
+  const [weeks, setWeeks] = useState<Week[]>([]);
+  const [activeWeek, setActiveWeek] = useState<Week | null>(null);
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [weekDialogOpen, setWeekDialogOpen] = useState(false);
   const [showImportSuccess, setShowImportSuccess] = useState(false);
   const [showExportSuccess, setShowExportSuccess] = useState(false);
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [pendingImportData, setPendingImportData] = useState<{workoutData: any[], blockIds: Set<string>} | null>(null);
+  const [pendingImportData, setPendingImportData] = useState<{workoutData: any[], weekIds: Set<string>} | null>(null);
 
   useEffect(() => {
     initializeApp();
   }, []);
 
   useEffect(() => {
-    if (activeBlock) {
-      loadWorkoutsForBlock(activeBlock.block_id);
+    if (activeWeek) {
+      loadWorkoutsForWeek(activeWeek.week_id);
     }
-  }, [activeBlock]);
+  }, [activeWeek]);
 
   const initializeApp = async () => {
     try {
-      await initializeDefaultBlock();
-      await loadBlocks();
+      await initializeCurrentWeek();
+      await loadWeeks();
     } catch (error) {
       console.error('Error initializing app:', error);
     }
   };
 
-  const loadBlocks = async () => {
+  const loadWeeks = async () => {
     try {
-      const allBlocks = await dbHelpers.getAllBlocks();
-      setBlocks(allBlocks);
+      const allWeeks = await dbHelpers.getAllWeeks();
+      setWeeks(allWeeks);
       
-      const active = await dbHelpers.getActiveBlock();
+      const active = await dbHelpers.getActiveWeek();
       if (active) {
-        setActiveBlock(active);
-      } else if (allBlocks.length > 0) {
-        setActiveBlock(allBlocks[0]);
-        await dbHelpers.setActiveBlock(allBlocks[0].block_id);
+        setActiveWeek(active);
+      } else if (allWeeks.length > 0) {
+        setActiveWeek(allWeeks[0]);
+        await dbHelpers.setActiveWeek(allWeeks[0].week_id);
       }
     } catch (error) {
-      console.error('Error loading blocks:', error);
+      console.error('Error loading weeks:', error);
     }
   };
 
-  const loadWorkoutsForBlock = async (blockId: string) => {
+  const loadWorkoutsForWeek = async (weekId: string) => {
     try {
-      const blockWorkouts = await dbHelpers.getWorkoutsByBlock(blockId);
-      setWorkouts(blockWorkouts);
+      const weekWorkouts = await dbHelpers.getWorkoutsByWeek(weekId);
+      setWorkouts(weekWorkouts);
       
-      const days = [...new Set(blockWorkouts.map(w => w.day))].sort();
+      const days = [...new Set(weekWorkouts.map(w => w.day))].sort();
       setAvailableDays(days);
       
       if (days.length > 0 && !days.includes(selectedDay)) {
@@ -91,7 +91,7 @@ function App() {
       const headers = lines[0].split(',').map(h => h.trim());
       
       const workoutData: Omit<Workout, 'id'>[] = [];
-      const blockIds = new Set<string>();
+      const weekIds = new Set<string>();
       const errors: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
@@ -102,10 +102,9 @@ function App() {
         headers.forEach((header, index) => {
           const value = values[index];
           switch (header.toLowerCase()) {
-            case 'block_id':
-            case 'week_id': // Support legacy format
-              workout.block_id = value;
-              blockIds.add(value);
+            case 'week_id':
+              workout.week_id = value;
+              weekIds.add(value);
               break;
             case 'day':
               workout.day = value;
@@ -143,9 +142,16 @@ function App() {
         workoutData.push(workout);
       }
 
-      // Validate data - check for required fields
+      // Validate data
+      for (const weekId of weekIds) {
+        if (!weekId.match(/^\d{4}-W\d{1,2}$/)) {
+          errors.push(`Invalid week_id format: "${weekId}". Expected format: YYYY-WXX (e.g., 2024-W01)`);
+        }
+      }
+
+      // Check for required fields
       workoutData.forEach((workout, index) => {
-        if (!workout.block_id) errors.push(`Row ${index + 2}: Missing block_id`);
+        if (!workout.week_id) errors.push(`Row ${index + 2}: Missing week_id`);
         if (!workout.day) errors.push(`Row ${index + 2}: Missing day`);
         if (!workout.exercise_name) errors.push(`Row ${index + 2}: Missing exercise_name`);
         if (!workout.category) errors.push(`Row ${index + 2}: Missing category`);
@@ -155,7 +161,7 @@ function App() {
       // Set preview data (first 5 rows)
       setPreviewData(workoutData.slice(0, 5));
       setValidationErrors(errors);
-      setPendingImportData({ workoutData, blockIds });
+      setPendingImportData({ workoutData, weekIds });
       setValidationDialogOpen(true);
       
       event.target.value = '';
@@ -177,26 +183,31 @@ function App() {
       // Clear all existing data before import
       await dbHelpers.clearAllData();
 
-      const { workoutData, blockIds } = pendingImportData;
+      const { workoutData, weekIds } = pendingImportData;
 
-      // Create blocks if they don't exist
-      for (const blockId of blockIds) {
-        const existingBlock = await dbHelpers.getAllBlocks().then(blocks => 
-          blocks.find(b => b.block_id === blockId)
+      // Create weeks if they don't exist
+      for (const weekId of weekIds) {
+        const existingWeek = await dbHelpers.getAllWeeks().then(weeks => 
+          weeks.find(w => w.week_id === weekId)
         );
         
-        if (!existingBlock) {
-          await dbHelpers.createBlock({
-            block_id: blockId,
-            block_name: blockId,
-            is_active: 0,
-            created_at: new Date()
+        if (!existingWeek) {
+          const [year, weekStr] = weekId.split('-W');
+          const weekNumber = parseInt(weekStr);
+          
+          await dbHelpers.createWeek({
+            week_id: weekId,
+            week_number: weekNumber,
+            year: parseInt(year),
+            start_date: new Date(),
+            end_date: new Date(),
+            is_active: 0
           });
         }
       }
 
       await dbHelpers.importWorkouts(workoutData);
-      await loadBlocks();
+      await loadWeeks();
       
       // Show success feedback
       setShowImportSuccess(true);
@@ -220,13 +231,13 @@ function App() {
     setValidationErrors([]);
   };
 
-  const exportBlockData = async () => {
-    if (!activeBlock) return;
+  const exportWeekData = async () => {
+    if (!activeWeek) return;
 
     try {
-      const { workouts } = await dbHelpers.exportBlockData(activeBlock.block_id);
+      const { workouts } = await dbHelpers.exportWeekData(activeWeek.week_id);
       
-      const headers = ['block_id', 'day', 'exercise_name', 'category', 'type', 'sets', 'reps', 'weight', 'duration', 'rest', 'cues'];
+      const headers = ['week_id', 'day', 'exercise_name', 'category', 'type', 'sets', 'reps', 'weight', 'duration', 'rest', 'cues'];
       const csvContent = [
         headers.join(','),
         ...workouts.map(workout => 
@@ -238,7 +249,7 @@ function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `fitflow-${activeBlock.block_id}.csv`;
+      a.download = `fitflow-${activeWeek.week_id}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       
@@ -261,27 +272,27 @@ function App() {
     }
   };
 
-  const handleBlockSelect = (block: Block) => {
-    setActiveBlock(block);
-    dbHelpers.setActiveBlock(block.block_id);
-    setBlockDialogOpen(false);
+  const handleWeekSelect = (week: Week) => {
+    setActiveWeek(week);
+    dbHelpers.setActiveWeek(week.week_id);
+    setWeekDialogOpen(false);
   };
 
-  const navigateBlock = (direction: 'prev' | 'next') => {
-    if (!activeBlock || blocks.length === 0) return;
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    if (!activeWeek || weeks.length === 0) return;
     
-    const currentIndex = blocks.findIndex(b => b.block_id === activeBlock.block_id);
+    const currentIndex = weeks.findIndex(w => w.week_id === activeWeek.week_id);
     let newIndex;
     
     if (direction === 'prev') {
-      newIndex = currentIndex > 0 ? currentIndex - 1 : blocks.length - 1;
+      newIndex = currentIndex > 0 ? currentIndex - 1 : weeks.length - 1;
     } else {
-      newIndex = currentIndex < blocks.length - 1 ? currentIndex + 1 : 0;
+      newIndex = currentIndex < weeks.length - 1 ? currentIndex + 1 : 0;
     }
     
-    const newBlock = blocks[newIndex];
-    setActiveBlock(newBlock);
-    dbHelpers.setActiveBlock(newBlock.block_id);
+    const newWeek = weeks[newIndex];
+    setActiveWeek(newWeek);
+    dbHelpers.setActiveWeek(newWeek.week_id);
   };
 
   const getDayWorkouts = () => {
@@ -302,38 +313,38 @@ function App() {
 
   const renderWorkoutsTab = () => (
     <div className="space-y-4 pb-20">
-      {/* Block Navigation */}
+      {/* Week Navigation */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => navigateBlock('prev')}>
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+            <Dialog open={weekDialogOpen} onOpenChange={setWeekDialogOpen}>
               <DialogTrigger asChild>
                 <button className="text-center hover:bg-gray-50 px-4 py-2 rounded transition-colors">
-                  <div className="font-semibold">{activeBlock?.block_name}</div>
+                  <div className="font-semibold">{activeWeek?.week_id}</div>
                   <div className="text-sm text-muted-foreground">
-                    {activeBlock?.block_id}
+                    Week {activeWeek?.week_number}, {activeWeek?.year}
                   </div>
                 </button>
               </DialogTrigger>
               <DialogContent className="max-w-sm">
                 <DialogHeader>
-                  <DialogTitle>Select Block</DialogTitle>
+                  <DialogTitle>Select Week</DialogTitle>
                 </DialogHeader>
                 <div className="max-h-[60vh] overflow-y-auto space-y-2">
-                  {blocks.map(block => (
+                  {weeks.map(week => (
                     <Button
-                      key={block.block_id}
-                      variant={activeBlock?.block_id === block.block_id ? "default" : "outline"}
+                      key={week.week_id}
+                      variant={activeWeek?.week_id === week.week_id ? "default" : "outline"}
                       className="w-full justify-start"
-                      onClick={() => handleBlockSelect(block)}
+                      onClick={() => handleWeekSelect(week)}
                     >
                       <div className="text-left">
-                        <div className="font-semibold">{block.block_name}</div>
+                        <div className="font-semibold">{week.week_id}</div>
                         <div className="text-xs opacity-70">
-                          {block.block_id}
+                          Week {week.week_number}, {week.year}
                         </div>
                       </div>
                     </Button>
@@ -341,7 +352,7 @@ function App() {
                 </div>
               </DialogContent>
             </Dialog>
-            <Button variant="outline" size="sm" onClick={() => navigateBlock('next')}>
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -398,7 +409,7 @@ function App() {
         <Card>
           <CardContent className="text-center py-8">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold mb-2">No workouts for this block</h3>
+            <h3 className="font-semibold mb-2">No workouts for this week</h3>
             <p className="text-muted-foreground mb-4">Import a CSV file to get started</p>
             <Button onClick={() => setActiveTab('import')}>
               Import Workouts
@@ -421,7 +432,7 @@ function App() {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Upload a CSV file with your workout routines. The file should include columns: 
-            block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues.
+            week_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues.
           </p>
           <div className="space-y-2">
             <input
@@ -451,15 +462,15 @@ function App() {
               </PopoverContent>
             </Popover>
             <TestDataButton />
-            {activeBlock && (
+            {activeWeek && (
               <Popover open={showExportSuccess}>
                 <PopoverTrigger asChild>
                   <Button 
-                    onClick={exportBlockData}
+                    onClick={exportWeekData}
                     variant="outline"
                     className="w-full"
                   >
-                    Export Current Block
+                    Export Current Week
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-2" side="top">
@@ -488,9 +499,9 @@ function App() {
         </CardHeader>
         <CardContent>
           <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
-{`block_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues
-Week 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up and drive through heels
-Week 1,Day 1,Plank,Additional,time,3,,,30,60,Maintain straight line from head to heels`}
+{`week_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues
+2024-W01,Monday,Squats,Primary,weights,3,10,100,,90,Keep chest up and drive through heels
+2024-W01,Monday,Plank,Additional,time,3,,30,60,Maintain straight line from head to heels`}
           </pre>
         </CardContent>
       </Card>
@@ -555,7 +566,7 @@ Week 1,Day 1,Plank,Additional,time,3,,,30,60,Maintain straight line from head to
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-gray-300">
-                      <th className="text-left p-2">Block ID</th>
+                      <th className="text-left p-2">Week ID</th>
                       <th className="text-left p-2">Day</th>
                       <th className="text-left p-2">Exercise</th>
                       <th className="text-left p-2">Category</th>
@@ -566,7 +577,7 @@ Week 1,Day 1,Plank,Additional,time,3,,,30,60,Maintain straight line from head to
                   <tbody>
                     {previewData.map((workout, index) => (
                       <tr key={index} className="border-b border-gray-200">
-                        <td className="p-2">{workout.block_id}</td>
+                        <td className="p-2">{workout.week_id}</td>
                         <td className="p-2">{workout.day}</td>
                         <td className="p-2">{workout.exercise_name}</td>
                         <td className="p-2">{workout.category}</td>
@@ -584,7 +595,7 @@ Week 1,Day 1,Plank,Additional,time,3,,,30,60,Maintain straight line from head to
               <h3 className="font-semibold text-blue-800 mb-2">Import Summary</h3>
               <p className="text-sm text-blue-700">
                 Total exercises: {pendingImportData?.workoutData.length || 0}<br />
-                Unique blocks: {pendingImportData?.blockIds.size || 0}<br />
+                Unique weeks: {pendingImportData?.weekIds.size || 0}<br />
                 Validation errors: {validationErrors.length}
               </p>
             </div>

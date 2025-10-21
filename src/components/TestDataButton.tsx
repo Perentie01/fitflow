@@ -5,30 +5,26 @@ import { dbHelpers } from '../lib/database';
 export function TestDataButton() {
   const loadTestData = async () => {
     try {
-      // Create test weeks
-      await dbHelpers.createWeek({
-        week_id: '2024-W01',
-        week_number: 1,
-        year: 2024,
-        start_date: new Date('2024-01-01'),
-        end_date: new Date('2024-01-07'),
-        is_active: 1
+      // Create test blocks
+      await dbHelpers.createBlock({
+        block_id: 'Week 1',
+        block_name: 'Week 1',
+        is_active: 1,
+        created_at: new Date()
       });
 
-      await dbHelpers.createWeek({
-        week_id: '2024-W02',
-        week_number: 2,
-        year: 2024,
-        start_date: new Date('2024-01-08'),
-        end_date: new Date('2024-01-14'),
-        is_active: 0
+      await dbHelpers.createBlock({
+        block_id: 'Week 2',
+        block_name: 'Week 2',
+        is_active: 0,
+        created_at: new Date()
       });
 
       // Create test workouts with cues
       const testWorkouts = [
         {
-          week_id: '2024-W01',
-          day: 'Monday',
+          block_id: 'Week 1',
+          day: 'Day 1',
           exercise_name: 'Dynamic Warm-up',
           category: 'Warm-up' as const,
           type: 'time' as const,
@@ -38,8 +34,8 @@ export function TestDataButton() {
           cues: 'Light movement to prepare joints and muscles'
         },
         {
-          week_id: '2024-W01',
-          day: 'Monday',
+          block_id: 'Week 1',
+          day: 'Day 1',
           exercise_name: 'Squats',
           category: 'Primary' as const,
           type: 'weights' as const,
@@ -50,8 +46,8 @@ export function TestDataButton() {
           cues: 'Keep chest up and drive through heels'
         },
         {
-          week_id: '2024-W01',
-          day: 'Monday',
+          block_id: 'Week 1',
+          day: 'Day 1',
           exercise_name: 'Bench Press',
           category: 'Primary' as const,
           type: 'weights' as const,
@@ -62,8 +58,8 @@ export function TestDataButton() {
           cues: 'Control the descent and pause at chest'
         },
         {
-          week_id: '2024-W01',
-          day: 'Monday',
+          block_id: 'Week 1',
+          day: 'Day 1',
           exercise_name: 'Plank',
           category: 'Additional' as const,
           type: 'time' as const,
@@ -73,8 +69,8 @@ export function TestDataButton() {
           cues: 'Maintain straight line from head to heels'
         },
         {
-          week_id: '2024-W01',
-          day: 'Monday',
+          block_id: 'Week 1',
+          day: 'Day 1',
           exercise_name: 'Cool-down Stretch',
           category: 'Cool-down' as const,
           type: 'time' as const,
@@ -84,8 +80,8 @@ export function TestDataButton() {
           cues: 'Hold each stretch for 30 seconds'
         },
         {
-          week_id: '2024-W01',
-          day: 'Tuesday',
+          block_id: 'Week 1',
+          day: 'Day 2',
           exercise_name: 'Light Cardio',
           category: 'Warm-up' as const,
           type: 'time' as const,
@@ -95,8 +91,8 @@ export function TestDataButton() {
           cues: 'Easy pace to get blood flowing'
         },
         {
-          week_id: '2024-W01',
-          day: 'Tuesday',
+          block_id: 'Week 1',
+          day: 'Day 2',
           exercise_name: 'Deadlifts',
           category: 'Primary' as const,
           type: 'weights' as const,
@@ -107,8 +103,8 @@ export function TestDataButton() {
           cues: 'Maintain neutral spine and engage lats'
         },
         {
-          week_id: '2024-W01',
-          day: 'Tuesday',
+          block_id: 'Week 1',
+          day: 'Day 2',
           exercise_name: 'Pull-ups',
           category: 'Secondary' as const,
           type: 'weights' as const,
