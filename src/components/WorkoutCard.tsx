@@ -155,7 +155,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
         {workout.guidance && (
           <div className="p-2 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-md">
             <div className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">GUIDANCE</div>
-            <p className="text-sm text-amber-800 dark:text-amber-300">{workout.guidance}</p>
+            <p className="text-sm text-amber-800 dark:text-amber-300 break-words">{workout.guidance}</p>
           </div>
         )}
 
@@ -173,7 +173,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
                 </button>
               )}
             </div>
-            <p className="text-sm text-blue-800 dark:text-blue-300">{displayedCues}</p>
+            <p className="text-sm text-blue-800 dark:text-blue-300 break-words">{displayedCues}</p>
           </div>
         )}
 
@@ -281,7 +281,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
           </DialogHeader>
           <div className="space-y-4">
             {workout.description && (
-              <div className="text-sm text-gray-700 whitespace-pre-wrap">
+              <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
                 {workout.description}
               </div>
             )}
