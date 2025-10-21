@@ -301,7 +301,7 @@ function App() {
   };
 
   const groupWorkoutsByCategory = (workouts: Workout[]) => {
-    const categories = ['Warm-up', 'Primary', 'Secondary', 'Additional', 'Cool-down'];
+    const categories = ['Intent', 'Warm-up', 'Primary', 'Secondary', 'Additional', 'Cool-down'];
     return categories.reduce((acc, category) => {
       const categoryWorkouts = workouts.filter(w => w.category === category);
       if (categoryWorkouts.length > 0) {
