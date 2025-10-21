@@ -311,73 +311,75 @@ function App() {
     }, {} as Record<string, Workout[]>);
   };
 
-  const renderWorkoutsTab = () => (
-    <div className="space-y-4 pb-20">
-      {/* Block Navigation */}
-      <Card>
-        <CardHeader className="py-2">
-          <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={() => navigateBlock('prev')}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
-              <DialogTrigger asChild>
-                <button className="text-center hover:bg-gray-50 px-3 py-1 rounded transition-colors">
-                  <div className="font-semibold text-base">{activeBlock?.block_name}</div>
-                </button>
-              </DialogTrigger>
-              <DialogContent className="max-w-sm">
-                <DialogHeader>
-                  <DialogTitle>Select Block</DialogTitle>
-                </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto space-y-2">
-                  {blocks.map(block => (
-                    <Button
-                      key={block.block_id}
-                      variant={activeBlock?.block_id === block.block_id ? "default" : "outline"}
-                      className="w-full justify-start"
-                      onClick={() => handleBlockSelect(block)}
-                    >
-                      <div className="text-left">
-                        <div className="font-semibold">{block.block_name}</div>
-                        <div className="text-xs opacity-70">
-                          {block.block_id}
-                        </div>
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button variant="outline" size="sm" onClick={() => navigateBlock('next')}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
+  const renderWorkoutsTab = () => {
+    // Show blank screen if no workout selected
+    if (!activeBlock || !selectedDay) {
+      return (
+        <div className="flex items-center justify-center h-[70vh]">
+          <h1 className="text-4xl font-bold text-gray-300">FitFlow</h1>
+        </div>
+      );
+    }
 
-      {/* Day Selection */}
-      {availableDays.length > 0 && (
+    return (
+      <div className="space-y-4 pb-20">
+        {/* Combined Block and Day Navigation */}
         <Card>
           <CardHeader className="py-2">
-            <CardTitle className="text-base">Select Day</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {availableDays.map(day => (
-                <Button
-                  key={day}
-                  variant={selectedDay === day ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedDay(day)}
-                >
-                  {day}
-                </Button>
-              ))}
+            <div className="flex items-center justify-between gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigateBlock('prev')}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+                <DialogTrigger asChild>
+                  <button className="flex-1 text-center hover:bg-gray-50 px-3 py-1 rounded transition-colors">
+                    <div className="font-semibold text-base">{activeBlock?.block_name}</div>
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle>Select Block</DialogTitle>
+                  </DialogHeader>
+                  <div className="max-h-[60vh] overflow-y-auto space-y-2">
+                    {blocks.map(block => (
+                      <Button
+                        key={block.block_id}
+                        variant={activeBlock?.block_id === block.block_id ? "default" : "outline"}
+                        className="w-full justify-start"
+                        onClick={() => handleBlockSelect(block)}
+                      >
+                        <div className="text-left">
+                          <div className="font-semibold">{block.block_name}</div>
+                          <div className="text-xs opacity-70">
+                            {block.block_id}
+                          </div>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" size="sm" onClick={() => navigateBlock('next')}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-          </CardContent>
+            {/* Day Selection - Inline */}
+            {availableDays.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {availableDays.map(day => (
+                  <Button
+                    key={day}
+                    variant={selectedDay === day ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedDay(day)}
+                  >
+                    {day}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </CardHeader>
         </Card>
-      )}
 
       {/* Workouts */}
       {selectedDay && (
@@ -408,16 +410,17 @@ function App() {
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="font-semibold mb-2">No workouts for this block</h3>
             <p className="text-muted-foreground mb-4">Import a CSV file to get started</p>
-            <Button onClick={() => setActiveTab('import')}>
+            <Button onClick={() => setActiveTab('config')}>
               Import Workouts
             </Button>
           </CardContent>
         </Card>
       )}
     </div>
-  );
+    );
+  };
 
-  const renderImportTab = () => (
+  const renderConfigTab = () => (
     <div className="space-y-4 pb-20">
       <Card>
         <CardHeader>
@@ -507,16 +510,66 @@ Week 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red ba
     </div>
   );
 
-  const renderProgressTab = () => (
-    <div className="space-y-4 pb-20">
-      <Card>
-        <CardContent className="text-center py-8">
-          <h3 className="font-semibold mb-2">Progress Tracking</h3>
-          <p className="text-muted-foreground">Coming soon...</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const renderProgressTab = () => {
+    // Get workouts with logged data
+    const loggedWorkouts = workouts.filter(w => w.logged_sets && w.logged_sets.length > 0);
+    
+    // Group by block and day
+    const groupedByBlock = loggedWorkouts.reduce((acc: any, workout) => {
+      const key = `${workout.block_id} - ${workout.day}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(workout);
+      return acc;
+    }, {});
+
+    return (
+      <div className="space-y-4 pb-20">
+        <Card>
+          <CardHeader>
+            <CardTitle>Workout History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loggedWorkouts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No workouts logged yet</p>
+                <p className="text-sm mt-2">Complete exercises in the Workouts tab to track progress</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {Object.entries(groupedByBlock).map(([key, exercises]: [string, any]) => (
+                  <div key={key} className="border rounded-lg p-3">
+                    <h3 className="font-semibold text-sm mb-3">{key}</h3>
+                    <div className="space-y-3">
+                      {exercises.map((workout: Workout, idx: number) => (
+                        <div key={idx} className="border-l-2 border-blue-500 pl-3">
+                          <div className="flex justify-between items-start mb-1">
+                            <div className="font-medium text-sm">{workout.exercise_name}</div>
+                            <Badge variant="outline" className="text-xs">{workout.category}</Badge>
+                          </div>
+                          <div className="text-xs space-y-1">
+                            {workout.logged_sets?.map((set: any, setIdx: number) => (
+                              <div key={setIdx} className="flex justify-between text-muted-foreground">
+                                <span>Set {setIdx + 1}</span>
+                                <span>
+                                  {set.reps && `${set.reps} reps`}
+                                  {set.weight && ` @ ${set.weight}kg`}
+                                  {set.duration && `${set.duration}min`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -528,7 +581,7 @@ Week 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red ba
       {/* Content */}
       <div className="container mx-auto px-4 py-4">
         {activeTab === 'workouts' && renderWorkoutsTab()}
-        {activeTab === 'import' && renderImportTab()}
+        {activeTab === 'config' && renderConfigTab()}
         {activeTab === 'progress' && renderProgressTab()}
       </div>
 

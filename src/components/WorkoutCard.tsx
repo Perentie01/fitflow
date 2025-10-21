@@ -109,7 +109,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
 
   return (
     <Card className="w-full">
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-1">
         <div className="flex justify-between items-start">
           <button 
             onClick={() => workout.description && setDescriptionDialogOpen(true)}
