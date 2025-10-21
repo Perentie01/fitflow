@@ -103,14 +103,16 @@ function App() {
     try {
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim());
+      // Support both TSV (tab) and CSV (comma) formats
+      const delimiter = lines[0].includes('\t') ? '\t' : ',';
+      const headers = lines[0].split(delimiter).map(h => h.trim());
       
       const workoutData: Omit<Workout, 'id'>[] = [];
       const blockIds = new Set<string>();
       const errors: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
+        const values = lines[i].split(delimiter).map(v => v.trim());
         if (values.length < headers.length) continue;
 
         const workout: any = {};
@@ -252,19 +254,19 @@ function App() {
     try {
       const { workouts } = await dbHelpers.exportBlockData(activeBlock.block_id);
       
-      const headers = ['block_id', 'day', 'exercise_name', 'category', 'type', 'sets', 'reps', 'weight', 'duration', 'rest', 'cues'];
-      const csvContent = [
-        headers.join(','),
+      const headers = ['block_id', 'day', 'exercise_name', 'category', 'type', 'sets', 'reps', 'weight', 'duration', 'rest', 'cues', 'guidance', 'resistance', 'description'];
+      const tsvContent = [
+        headers.join('\t'),
         ...workouts.map(workout => 
-          headers.map(header => workout[header as keyof Workout] || '').join(',')
+          headers.map(header => workout[header as keyof Workout] || '').join('\t')
         )
       ].join('\n');
 
-      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const blob = new Blob([tsvContent], { type: 'text/tab-separated-values' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `fitflow-${activeBlock.block_id}.csv`;
+      a.download = `fitflow-${activeBlock.block_id}.tsv`;
       a.click();
       URL.revokeObjectURL(url);
       
@@ -425,7 +427,7 @@ function App() {
           <CardContent className="text-center py-8">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="font-semibold mb-2">No workouts for this block</h3>
-            <p className="text-muted-foreground mb-4">Import a CSV file to get started</p>
+            <p className="text-muted-foreground mb-4">Import a TSV or CSV file to get started</p>
             <Button onClick={() => setActiveTab('config')}>
               Import Workouts
             </Button>
@@ -447,14 +449,14 @@ function App() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Upload a CSV file with your workout routines. Required columns: 
+            Upload a TSV (recommended) or CSV file with your workout routines. Required columns: 
             block_id, day, exercise_name, category, type, sets, rest, cues. 
             Optional: reps, weight, duration, guidance, resistance, description.
           </p>
           <div className="space-y-2">
             <input
               type="file"
-              accept=".csv"
+              accept=".tsv,.csv,.txt"
               onChange={handleFileImport}
               className="hidden"
               id="csv-upload"
@@ -468,7 +470,7 @@ function App() {
                   className="w-full"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Importing...' : 'Choose CSV File'}
+                  {isLoading ? 'Importing...' : 'Choose TSV/CSV File'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-2" side="top">
@@ -512,25 +514,25 @@ function App() {
 
       <Card>
         <CardHeader>
-          <CardTitle>CSV Format Example</CardTitle>
+          <CardTitle>TSV Format Example</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
-{`block_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues,guidance,resistance,description
-Week 1,Day 1,Focus,Intent,mindset,1,,,2,0,Today's goal: build power,,,
-Week 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up,70% 1RM,,Full squat description here
-Week 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red band,`}
+{`block_id	day	exercise_name	category	type	sets	reps	weight	duration	rest	cues	guidance	resistance	description
+Week 1	Day 1	Focus	Intent	mindset	1			2	0	Today's goal: build power, focus on explosive movement			
+Week 1	Day 1	Squats	Primary	weights	3	10	100		90	Keep chest up, drive through heels	70% 1RM		Full squat description here
+Week 1	Day 1	Band Pull	Additional	weights	3	15			60	Control the movement, squeeze at the top		Red band	`}
           </pre>
           <Button 
             onClick={() => {
-              const csvExample = `block_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues,guidance,resistance,description\nWeek 1,Day 1,Focus,Intent,mindset,1,,,2,0,Today's goal: build power,,,\nWeek 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up,70% 1RM,,Full squat description here\nWeek 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red band,`;
-              navigator.clipboard.writeText(csvExample);
+              const tsvExample = `block_id\tday\texercise_name\tcategory\ttype\tsets\treps\tweight\tduration\trest\tcues\tguidance\tresistance\tdescription\nWeek 1\tDay 1\tFocus\tIntent\tmindset\t1\t\t\t2\t0\tToday's goal: build power, focus on explosive movement\t\t\t\nWeek 1\tDay 1\tSquats\tPrimary\tweights\t3\t10\t100\t\t90\tKeep chest up, drive through heels\t70% 1RM\t\tFull squat description here\nWeek 1\tDay 1\tBand Pull\tAdditional\tweights\t3\t15\t\t\t60\tControl the movement, squeeze at the top\t\tRed band\t`;
+              navigator.clipboard.writeText(tsvExample);
             }}
             variant="outline"
             size="sm"
             className="w-full"
           >
-            Copy Example CSV
+            Copy Example TSV
           </Button>
         </CardContent>
       </Card>
@@ -555,7 +557,7 @@ Week 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red ba
           </div>
           <Button 
             onClick={() => {
-              const llmInstructions = `Generate a workout CSV with these specifications:\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nAdd detailed descriptions for complex exercises.\n\nExample format:\nblock_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues,guidance,resistance,description\nWeek 1,Day 1,Focus,Intent,mindset,1,,,2,0,Today's goal: build power,,,\nWeek 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up,70% 1RM,,Full squat description`;
+              const llmInstructions = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nAdd detailed descriptions for complex exercises.\n\nExample format (columns separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\tFull description`;
               navigator.clipboard.writeText(llmInstructions);
             }}
             variant="outline"
