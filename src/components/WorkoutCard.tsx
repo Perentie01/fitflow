@@ -26,6 +26,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
   const [showProgressForm, setShowProgressForm] = useState(false);
   const [cuesExpanded, setCuesExpanded] = useState(false);
   const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   React.useEffect(() => {
     initializeSetProgress();
@@ -66,6 +67,8 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
       }
 
       setShowProgressForm(false);
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 2000);
       onProgressUpdate?.();
     } catch (error) {
       console.error('Error saving progress:', error);
@@ -130,8 +133,8 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
       </CardHeader>
       
       <CardContent className="space-y-3">
-        {/* Exercise Details */}
-        {!isMindsetExercise && (
+        {/* Exercise Details - Hide for Intent/mindset exercises */}
+        {!isMindsetExercise && workout.category !== 'Intent' && (
           <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
             <div>Sets: {workout.sets}</div>
             {workout.type === 'weights' && (
@@ -174,16 +177,23 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
           </div>
         )}
 
-        {/* Progress Logging - Only for non-mindset exercises */}
-        {!isMindsetExercise && !showProgressForm && (
-          <Button 
-            onClick={() => setShowProgressForm(true)}
-            className="w-full"
-            variant="outline"
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Log Progress
-          </Button>
+        {/* Progress Logging - Only for non-mindset and non-Intent exercises */}
+        {!isMindsetExercise && workout.category !== 'Intent' && !showProgressForm && (
+          <div className="relative">
+            <Button 
+              onClick={() => setShowProgressForm(true)}
+              className="w-full"
+              variant="outline"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Log Progress
+            </Button>
+            {showSaveSuccess && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-3 py-1 rounded shadow-lg">
+                ✓ Saved
+              </div>
+            )}
+          </div>
         )}
 
         {showProgressForm && (

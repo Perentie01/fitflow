@@ -27,10 +27,23 @@ function App() {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [pendingImportData, setPendingImportData] = useState<{workoutData: any[], blockIds: Set<string>} | null>(null);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved === 'true';
+  });
 
   useEffect(() => {
     initializeApp();
   }, []);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', String(darkMode));
+  }, [darkMode]);
 
   useEffect(() => {
     if (activeBlock) {
@@ -50,7 +63,9 @@ function App() {
   const loadBlocks = async () => {
     try {
       const allBlocks = await dbHelpers.getAllBlocks();
-      setBlocks(allBlocks);
+      // Sort blocks alphabetically by block_name
+      const sortedBlocks = allBlocks.sort((a, b) => a.block_name.localeCompare(b.block_name));
+      setBlocks(sortedBlocks);
       
       const active = await dbHelpers.getActiveBlock();
       if (active) {
@@ -322,64 +337,65 @@ function App() {
     }
 
     return (
-      <div className="space-y-4 pb-20">
-        {/* Combined Block and Day Navigation */}
-        <Card>
-          <CardHeader className="py-2">
-            <div className="flex items-center justify-between gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigateBlock('prev')}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
-                <DialogTrigger asChild>
-                  <button className="flex-1 text-center hover:bg-gray-50 px-3 py-1 rounded transition-colors">
-                    <div className="font-semibold text-base">{activeBlock?.block_name}</div>
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle>Select Block</DialogTitle>
-                  </DialogHeader>
-                  <div className="max-h-[60vh] overflow-y-auto space-y-2">
-                    {blocks.map(block => (
-                      <Button
-                        key={block.block_id}
-                        variant={activeBlock?.block_id === block.block_id ? "default" : "outline"}
-                        className="w-full justify-start"
-                        onClick={() => handleBlockSelect(block)}
-                      >
-                        <div className="text-left">
-                          <div className="font-semibold">{block.block_name}</div>
-                          <div className="text-xs opacity-70">
-                            {block.block_id}
-                          </div>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <Button variant="outline" size="sm" onClick={() => navigateBlock('next')}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-            {/* Day Selection - Inline */}
-            {availableDays.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {availableDays.map(day => (
+      <div className="space-y-3 pb-20">
+        {/* Modern Minimal Block and Day Selector */}
+        <div className="flex items-center justify-between px-1">
+          <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+            <DialogTrigger asChild>
+              <button className="text-lg font-bold hover:text-blue-600 transition-colors">
+                {activeBlock?.block_name}
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Select Block</DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[60vh] overflow-y-auto space-y-2">
+                {blocks.map(block => (
                   <Button
-                    key={day}
-                    variant={selectedDay === day ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedDay(day)}
+                    key={block.block_id}
+                    variant={activeBlock?.block_id === block.block_id ? "default" : "outline"}
+                    className="w-full justify-start"
+                    onClick={() => handleBlockSelect(block)}
                   >
-                    {day}
+                    <div className="text-left">
+                      <div className="font-semibold">{block.block_name}</div>
+                      <div className="text-xs opacity-70">
+                        {block.block_id}
+                      </div>
+                    </div>
                   </Button>
                 ))}
               </div>
-            )}
-          </CardHeader>
-        </Card>
+            </DialogContent>
+          </Dialog>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" onClick={() => navigateBlock('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => navigateBlock('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        {/* Day Pills */}
+        {availableDays.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-1">
+            {availableDays.map(day => (
+              <button
+                key={day}
+                onClick={() => setSelectedDay(day)}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  selectedDay === day 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {day}
+              </button>
+            ))}
+          </div>
+        )}
 
       {/* Workouts */}
       {selectedDay && (
@@ -498,13 +514,56 @@ function App() {
         <CardHeader>
           <CardTitle>CSV Format Example</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
 {`block_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues,guidance,resistance,description
 Week 1,Day 1,Focus,Intent,mindset,1,,,2,0,Today's goal: build power,,,
 Week 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up,70% 1RM,,Full squat description here
 Week 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red band,`}
           </pre>
+          <Button 
+            onClick={() => {
+              const csvExample = `block_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues,guidance,resistance,description\nWeek 1,Day 1,Focus,Intent,mindset,1,,,2,0,Today's goal: build power,,,\nWeek 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up,70% 1RM,,Full squat description here\nWeek 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red band,`;
+              navigator.clipboard.writeText(csvExample);
+            }}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            Copy Example CSV
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>LLM Instructions for Workout Generation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-sm space-y-2">
+            <p className="font-medium">Use these instructions to generate workouts with AI:</p>
+            <div className="bg-muted p-3 rounded text-xs space-y-2">
+              <p><strong>Required fields:</strong> block_id, day, exercise_name, category, type, sets, rest, cues</p>
+              <p><strong>Optional fields:</strong> reps, weight, duration, guidance, resistance, description</p>
+              <p><strong>Categories:</strong> Intent, Warm-up, Primary, Secondary, Additional, Cool-down</p>
+              <p><strong>Types:</strong> weights, time, mindset</p>
+              <p><strong>Intent exercises:</strong> Use category=Intent, type=mindset for mental prep (no sets/reps shown)</p>
+              <p><strong>Guidance:</strong> Use for instructions like "70% 1RM" or "per side"</p>
+              <p><strong>Resistance:</strong> Use for non-weight exercises like "Red band" or "Bodyweight"</p>
+              <p><strong>Description:</strong> Detailed exercise instructions (tappable on exercise name)</p>
+            </div>
+          </div>
+          <Button 
+            onClick={() => {
+              const llmInstructions = `Generate a workout CSV with these specifications:\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nAdd detailed descriptions for complex exercises.\n\nExample format:\nblock_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues,guidance,resistance,description\nWeek 1,Day 1,Focus,Intent,mindset,1,,,2,0,Today's goal: build power,,,\nWeek 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up,70% 1RM,,Full squat description`;
+              navigator.clipboard.writeText(llmInstructions);
+            }}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            Copy LLM Instructions
+          </Button>
         </CardContent>
       </Card>
     </div>
@@ -572,10 +631,27 @@ Week 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red ba
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-4">
-        <h1 className="text-2xl font-bold text-center">FitFlow</h1>
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+        <div className="flex items-center justify-between max-w-md mx-auto">
+          <h1 className="text-2xl font-bold dark:text-white">FitFlow</h1>
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Toggle dark mode"
+          >
+            {darkMode ? (
+              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Content */}
