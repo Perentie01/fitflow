@@ -153,27 +153,27 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
 
         {/* Guidance (if present) */}
         {workout.guidance && (
-          <div className="p-2 bg-amber-50 border-l-4 border-amber-400 rounded-r-md">
-            <div className="text-xs font-medium text-amber-700 mb-1">GUIDANCE</div>
-            <p className="text-sm text-amber-800">{workout.guidance}</p>
+          <div className="p-2 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-md">
+            <div className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">GUIDANCE</div>
+            <p className="text-sm text-amber-800 dark:text-amber-300">{workout.guidance}</p>
           </div>
         )}
 
         {/* Exercise Cues */}
         {workout.cues && (
-          <div className="p-2 bg-blue-50 border-l-4 border-blue-400 rounded-r-md">
+          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 rounded-r-md">
             <div className="flex justify-between items-center mb-1">
-              <div className="text-xs font-medium text-blue-700">FORM CUES</div>
+              <div className="text-xs font-medium text-blue-700 dark:text-blue-400">FORM CUES</div>
               {cuesAreLong && (
                 <button
                   onClick={() => setCuesExpanded(!cuesExpanded)}
-                  className="text-blue-600 hover:text-blue-800"
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                 >
                   {cuesExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
               )}
             </div>
-            <p className="text-sm text-blue-800">{displayedCues}</p>
+            <p className="text-sm text-blue-800 dark:text-blue-300">{displayedCues}</p>
           </div>
         )}
 
