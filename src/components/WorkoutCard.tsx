@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Timer, Weight, CheckCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Timer, Weight, CheckCircle, Brain, ChevronDown, ChevronUp } from 'lucide-react';
 import { Workout, Progress, dbHelpers } from '../lib/database';
 
 interface WorkoutCardProps {
@@ -23,6 +24,8 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
   const [setProgress, setSetProgress] = useState<SetProgress[]>([]);
   const [isLogging, setIsLogging] = useState(false);
   const [showProgressForm, setShowProgressForm] = useState(false);
+  const [cuesExpanded, setCuesExpanded] = useState(false);
+  const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
 
   React.useEffect(() => {
     initializeSetProgress();
@@ -32,7 +35,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
     const sets = Array.from({ length: workout.sets }, (_, index) => ({
       set_number: index + 1,
       completed_reps: workout.type === 'weights' ? workout.reps : undefined,
-      completed_weight: workout.type === 'weights' ? workout.weight : undefined,
+      completed_weight: workout.type === 'weights' && workout.weight ? workout.weight : undefined,
       completed_duration: workout.type === 'time' ? workout.duration : undefined,
       notes: ''
     }));
@@ -78,53 +81,101 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
       case 'Secondary': return 'bg-green-100 text-green-800';
       case 'Additional': return 'bg-purple-100 text-purple-800';
       case 'Cool-down': return 'bg-cyan-100 text-cyan-800';
+      case 'Intent': return 'bg-indigo-100 text-indigo-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
+  const getTypeIcon = () => {
+    switch (workout.type) {
+      case 'weights': return <Weight className="h-3 w-3" />;
+      case 'time': return <Timer className="h-3 w-3" />;
+      case 'mindset': return <Brain className="h-3 w-3" />;
+      default: return null;
+    }
+  };
+
+  // Check if cues are long (more than 60 characters)
+  const cuesAreLong = workout.cues && workout.cues.length > 60;
+  const displayedCues = cuesExpanded || !cuesAreLong 
+    ? workout.cues 
+    : workout.cues?.substring(0, 60) + '...';
+
+  // Mindset exercises don't need progress logging
+  const isMindsetExercise = workout.type === 'mindset';
+
+  // Check if weight should be shown (only for weights type with numeric weight)
+  const showWeight = workout.type === 'weights' && typeof workout.weight === 'number';
+
   return (
     <Card className="w-full">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold">{workout.exercise_name}</CardTitle>
+          <button 
+            onClick={() => workout.description && setDescriptionDialogOpen(true)}
+            className={`text-lg font-semibold text-left ${workout.description ? 'hover:text-blue-600 cursor-pointer' : ''}`}
+          >
+            {workout.exercise_name}
+          </button>
           <div className="flex items-center space-x-2">
             <Badge className={getCategoryColor(workout.category)}>
               {workout.category}
             </Badge>
             <Badge variant="outline" className="flex items-center space-x-1">
-              {workout.type === 'weights' ? <Weight className="h-3 w-3" /> : <Timer className="h-3 w-3" />}
+              {getTypeIcon()}
               <span>{workout.type}</span>
             </Badge>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {/* Exercise Details */}
-        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-          <div>Sets: {workout.sets}</div>
-          {workout.type === 'weights' && (
-            <>
-              <div>Reps: {workout.reps}</div>
-              <div>Weight: {workout.weight}kg</div>
-            </>
-          )}
-          {workout.type === 'time' && (
-            <div>Duration: {workout.duration}min</div>
-          )}
-          <div>Rest: {workout.rest}s</div>
-        </div>
-
-        {/* Exercise Cues */}
-        {workout.cues && (
-          <div className="p-3 bg-blue-50 border-l-4 border-blue-400 rounded-r-md">
-            <div className="text-xs font-medium text-blue-700 mb-1">FORM CUES</div>
-            <p className="text-sm text-blue-800">{workout.cues}</p>
+        {!isMindsetExercise && (
+          <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+            <div>Sets: {workout.sets}</div>
+            {workout.type === 'weights' && (
+              <>
+                <div>Reps: {workout.reps || '-'}</div>
+                {showWeight && <div>Weight: {workout.weight}kg</div>}
+                {workout.resistance && <div className="col-span-2">Resistance: {workout.resistance}</div>}
+              </>
+            )}
+            {workout.type === 'time' && (
+              <div>Duration: {workout.duration}min</div>
+            )}
+            <div>Rest: {workout.rest}s</div>
           </div>
         )}
 
-        {/* Progress Logging */}
-        {!showProgressForm ? (
+        {/* Guidance (if present) */}
+        {workout.guidance && (
+          <div className="p-2 bg-amber-50 border-l-4 border-amber-400 rounded-r-md">
+            <div className="text-xs font-medium text-amber-700 mb-1">GUIDANCE</div>
+            <p className="text-sm text-amber-800">{workout.guidance}</p>
+          </div>
+        )}
+
+        {/* Exercise Cues */}
+        {workout.cues && (
+          <div className="p-2 bg-blue-50 border-l-4 border-blue-400 rounded-r-md">
+            <div className="flex justify-between items-center mb-1">
+              <div className="text-xs font-medium text-blue-700">FORM CUES</div>
+              {cuesAreLong && (
+                <button
+                  onClick={() => setCuesExpanded(!cuesExpanded)}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  {cuesExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-blue-800">{displayedCues}</p>
+          </div>
+        )}
+
+        {/* Progress Logging - Only for non-mindset exercises */}
+        {!isMindsetExercise && !showProgressForm && (
           <Button 
             onClick={() => setShowProgressForm(true)}
             className="w-full"
@@ -133,7 +184,9 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
             <CheckCircle className="h-4 w-4 mr-2" />
             Log Progress
           </Button>
-        ) : (
+        )}
+
+        {showProgressForm && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h4 className="font-medium">Log Progress</h4>
@@ -170,20 +223,22 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
                             value={set.completed_reps || ''}
                             onChange={(e) => updateSetProgress(index, 'completed_reps', parseInt(e.target.value) || 0)}
                             className="h-8"
-                            placeholder={workout.reps?.toString()}
+                            placeholder={workout.reps?.toString() || ''}
                           />
                         </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Weight (kg)</label>
-                          <Input
-                            type="number"
-                            step="0.5"
-                            value={set.completed_weight || ''}
-                            onChange={(e) => updateSetProgress(index, 'completed_weight', parseFloat(e.target.value) || 0)}
-                            className="h-8"
-                            placeholder={workout.weight?.toString()}
-                          />
-                        </div>
+                        {showWeight && (
+                          <div>
+                            <label className="text-xs text-muted-foreground">Weight (kg)</label>
+                            <Input
+                              type="number"
+                              step="0.5"
+                              value={set.completed_weight || ''}
+                              onChange={(e) => updateSetProgress(index, 'completed_weight', parseFloat(e.target.value) || 0)}
+                              className="h-8"
+                              placeholder={workout.weight?.toString() || ''}
+                            />
+                          </div>
+                        )}
                       </>
                     )}
                     
@@ -196,7 +251,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
                           value={set.completed_duration || ''}
                           onChange={(e) => updateSetProgress(index, 'completed_duration', parseFloat(e.target.value) || 0)}
                           className="h-8"
-                          placeholder={workout.duration?.toString()}
+                          placeholder={workout.duration?.toString() || ''}
                         />
                       </div>
                     )}
@@ -207,6 +262,22 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
           </div>
         )}
       </CardContent>
+
+      {/* Exercise Description Dialog */}
+      <Dialog open={descriptionDialogOpen} onOpenChange={setDescriptionDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{workout.exercise_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {workout.description && (
+              <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                {workout.description}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

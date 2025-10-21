@@ -126,7 +126,9 @@ function App() {
               workout.reps = value ? parseInt(value) : undefined;
               break;
             case 'weight':
-              workout.weight = value ? parseFloat(value) : undefined;
+              // Only parse if it's a valid number, ignore text
+              const weightNum = parseFloat(value);
+              workout.weight = !isNaN(weightNum) ? weightNum : undefined;
               break;
             case 'duration':
               workout.duration = value ? parseFloat(value) : undefined;
@@ -136,6 +138,15 @@ function App() {
               break;
             case 'cues':
               workout.cues = value || '';
+              break;
+            case 'guidance':
+              workout.guidance = value || undefined;
+              break;
+            case 'resistance':
+              workout.resistance = value || undefined;
+              break;
+            case 'description':
+              workout.description = value || undefined;
               break;
           }
         });
@@ -304,18 +315,15 @@ function App() {
     <div className="space-y-4 pb-20">
       {/* Block Navigation */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="py-2">
           <div className="flex items-center justify-between">
             <Button variant="outline" size="sm" onClick={() => navigateBlock('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
               <DialogTrigger asChild>
-                <button className="text-center hover:bg-gray-50 px-4 py-2 rounded transition-colors">
-                  <div className="font-semibold">{activeBlock?.block_name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {activeBlock?.block_id}
-                  </div>
+                <button className="text-center hover:bg-gray-50 px-3 py-1 rounded transition-colors">
+                  <div className="font-semibold text-base">{activeBlock?.block_name}</div>
                 </button>
               </DialogTrigger>
               <DialogContent className="max-w-sm">
@@ -351,8 +359,8 @@ function App() {
       {/* Day Selection */}
       {availableDays.length > 0 && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Select Day</CardTitle>
+          <CardHeader className="py-2">
+            <CardTitle className="text-base">Select Day</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -420,8 +428,9 @@ function App() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Upload a CSV file with your workout routines. The file should include columns: 
-            block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues.
+            Upload a CSV file with your workout routines. Required columns: 
+            block_id, day, exercise_name, category, type, sets, rest, cues. 
+            Optional: reps, weight, duration, guidance, resistance, description.
           </p>
           <div className="space-y-2">
             <input
@@ -488,9 +497,10 @@ function App() {
         </CardHeader>
         <CardContent>
           <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
-{`block_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues
-Week 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up and drive through heels
-Week 1,Day 1,Plank,Additional,time,3,,,30,60,Maintain straight line from head to heels`}
+{`block_id,day,exercise_name,category,type,sets,reps,weight,duration,rest,cues,guidance,resistance,description
+Week 1,Day 1,Focus,Intent,mindset,1,,,2,0,Today's goal: build power,,,
+Week 1,Day 1,Squats,Primary,weights,3,10,100,,90,Keep chest up,70% 1RM,,Full squat description here
+Week 1,Day 1,Band Pull,Additional,weights,3,15,,,60,Control the movement,,Red band,`}
           </pre>
         </CardContent>
       </Card>

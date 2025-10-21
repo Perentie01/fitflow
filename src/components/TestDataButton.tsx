@@ -25,6 +25,18 @@ export function TestDataButton() {
         {
           block_id: 'Week 1',
           day: 'Day 1',
+          exercise_name: 'Focus',
+          category: 'Intent' as const,
+          type: 'mindset' as const,
+          sets: 1,
+          duration: 2,
+          rest: 0,
+          cues: "Today's goal: build acceleration and hip drive. Visualize explosive movement.",
+          description: 'Take a moment to mentally prepare for the workout. Focus on the key movement patterns and your training intention for today.'
+        },
+        {
+          block_id: 'Week 1',
+          day: 'Day 1',
           exercise_name: 'Dynamic Warm-up',
           category: 'Warm-up' as const,
           type: 'time' as const,
@@ -43,7 +55,9 @@ export function TestDataButton() {
           reps: 10,
           weight: 100,
           rest: 90,
-          cues: 'Keep chest up and drive through heels'
+          cues: 'Keep chest up and drive through heels',
+          guidance: '70% 1RM',
+          description: 'Stand with feet shoulder-width apart. Lower until thighs are parallel to ground. Drive through heels to return to standing.'
         },
         {
           block_id: 'Week 1',
@@ -111,7 +125,21 @@ export function TestDataButton() {
           sets: 3,
           reps: 8,
           rest: 90,
-          cues: 'Pull chest to bar and control descent'
+          cues: 'Pull chest to bar and control descent',
+          guidance: 'Per side if using assistance'
+        },
+        {
+          block_id: 'Week 1',
+          day: 'Day 2',
+          exercise_name: 'Band Face Pulls',
+          category: 'Additional' as const,
+          type: 'weights' as const,
+          sets: 3,
+          reps: 15,
+          rest: 60,
+          cues: 'Pull band to face level, squeeze shoulder blades',
+          resistance: 'Red band (heavy)',
+          description: 'Attach band at face height. Pull handles toward face while keeping elbows high. Focus on rear deltoid activation.'
         }
       ];
 

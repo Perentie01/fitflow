@@ -5,14 +5,17 @@ export interface Workout {
   block_id: string;
   day: string;
   exercise_name: string;
-  category: 'Warm-up' | 'Primary' | 'Secondary' | 'Additional' | 'Cool-down';
-  type: 'weights' | 'time';
+  category: 'Warm-up' | 'Primary' | 'Secondary' | 'Additional' | 'Cool-down' | 'Intent';
+  type: 'weights' | 'time' | 'mindset';
   sets: number;
   reps?: number;
   weight?: number;
   duration?: number;
   rest: number;
   cues: string;
+  guidance?: string;      // Instructions like "70% 1RM", "per side", etc.
+  resistance?: string;    // For non-weight exercises: "Red band", "Heavy", etc.
+  description?: string;   // Detailed exercise description
 }
 
 export interface Progress {
@@ -42,6 +45,13 @@ export class FitFlowDatabase extends Dexie {
 
   constructor() {
     super('FitFlowDatabase');
+    
+    // Version 3: Add guidance, resistance, description fields
+    this.version(3).stores({
+      workouts: '++id, block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues, guidance, resistance, description',
+      progress: '++id, workout_id, set_number, completed_reps, completed_weight, completed_duration, completed_at, notes',
+      blocks: '++id, block_id, block_name, is_active, created_at'
+    });
     
     // Version 2: Migrated from weeks to blocks
     this.version(2).stores({
