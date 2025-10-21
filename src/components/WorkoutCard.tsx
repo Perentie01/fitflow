@@ -27,6 +27,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
   const [cuesExpanded, setCuesExpanded] = useState(false);
   const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [hasLoggedProgress, setHasLoggedProgress] = useState(false);
 
   React.useEffect(() => {
     initializeSetProgress();
@@ -67,6 +68,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
       }
 
       setShowProgressForm(false);
+      setHasLoggedProgress(true);
       setShowSaveSuccess(true);
       setTimeout(() => setShowSaveSuccess(false), 2000);
       onProgressUpdate?.();
@@ -183,10 +185,16 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
             <Button 
               onClick={() => setShowProgressForm(true)}
               className="w-full"
-              variant="outline"
+              variant={hasLoggedProgress ? "default" : "outline"}
             >
-              <Check className="h-4 w-4 mr-2" />
-              Log Progress
+              {hasLoggedProgress ? (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Progress Logged
+                </>
+              ) : (
+                "Log Progress"
+              )}
             </Button>
             {showSaveSuccess && (
               <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-3 py-1 rounded shadow-lg">
