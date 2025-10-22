@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { WorkoutCard } from './components/WorkoutCard';
 import { BottomNav } from './components/BottomNav';
 import { TestDataButton } from './components/TestDataButton';
+import { ProgressTab } from './components/ProgressTab';
 import { dbHelpers, initializeDefaultBlock, Workout, Block } from './lib/database';
 import './App.css';
 
@@ -661,7 +662,7 @@ Week 1	Day 1	Band Pull	Additional	weights	3	15			60	Control the movement, squeez
       <div className="container mx-auto px-4 py-4">
         {activeTab === 'workouts' && renderWorkoutsTab()}
         {activeTab === 'config' && renderConfigTab()}
-        {activeTab === 'progress' && renderProgressTab()}
+        {activeTab === 'progress' && <ProgressTab />}
       </div>
 
       {/* Bottom Navigation */}

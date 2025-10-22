@@ -147,6 +147,19 @@ export const dbHelpers = {
     return await db.progress.where('workout_id').anyOf(workoutIds).toArray();
   },
 
+  async getProgressWithWorkoutDetails(): Promise<Array<Progress & { workout?: Workout }>> {
+    const allProgress = await db.progress.toArray();
+    const progressWithDetails = await Promise.all(
+      allProgress.map(async (progress) => {
+        const workout = await db.workouts.get(progress.workout_id);
+        return { ...progress, workout };
+      })
+    );
+    return progressWithDetails.sort((a, b) => 
+      new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
+    );
+  },
+
   // Export operations
   async exportBlockData(blockId: string): Promise<{ workouts: Workout[], progress: Progress[] }> {
     const workouts = await this.getWorkoutsByBlock(blockId);
