@@ -31,7 +31,22 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
 
   React.useEffect(() => {
     initializeSetProgress();
+    checkExistingProgress();
   }, [workout]);
+
+  const checkExistingProgress = async () => {
+    if (!workout.id) return;
+    
+    try {
+      // Check if any progress exists for this workout
+      const existingProgress = await dbHelpers.getProgressByWorkout(workout.id);
+      if (existingProgress && existingProgress.length > 0) {
+        setHasLoggedProgress(true);
+      }
+    } catch (error) {
+      console.error('Error checking existing progress:', error);
+    }
+  };
 
   const initializeSetProgress = () => {
     const sets = Array.from({ length: workout.sets }, (_, index) => ({
@@ -109,8 +124,8 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
   // Mindset exercises don't need progress logging
   const isMindsetExercise = workout.type === 'mindset';
 
-  // Check if weight should be shown (only for weights type with numeric weight)
-  const showWeight = workout.type === 'weights' && typeof workout.weight === 'number';
+  // Always show weight input for weights type exercises (user can enter actual weight performed)
+  const showWeight = workout.type === 'weights';
 
   return (
     <Card className="w-full">
@@ -184,7 +199,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
           <div className="relative">
             <Button 
               onClick={() => setShowProgressForm(true)}
-              className="w-full"
+              className={hasLoggedProgress ? "w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white" : "w-full"}
               variant={hasLoggedProgress ? "default" : "outline"}
             >
               {hasLoggedProgress ? (
@@ -208,6 +223,15 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h4 className="font-medium">Log Progress</h4>
+            </div>
+            
+            {workout.type === 'weights' && (
+              <p className="text-xs text-muted-foreground">
+                Enter the actual reps and weight you performed for each set
+              </p>
+            )}
+            
+            <div className="flex justify-end items-center">
               <div className="space-x-2">
                 <Button
                   size="sm"
