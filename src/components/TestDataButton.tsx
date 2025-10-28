@@ -5,150 +5,81 @@ import { dbHelpers } from '../lib/database';
 export function TestDataButton() {
   const loadTestData = async () => {
     try {
-      // Create test blocks
-      await dbHelpers.createBlock({
-        block_id: 'Week 1',
-        block_name: 'Week 1',
-        is_active: 1,
-        created_at: new Date()
-      });
-
-      await dbHelpers.createBlock({
-        block_id: 'Week 2',
-        block_name: 'Week 2',
-        is_active: 0,
-        created_at: new Date()
-      });
-
-      // Create test workouts with cues
-      const testWorkouts = [
-        {
-          block_id: 'Week 1',
-          day: 'Day 1',
-          exercise_name: 'Focus',
-          category: 'Intent' as const,
-          type: 'mindset' as const,
-          sets: 1,
-          duration: 2,
-          rest: 0,
-          cues: "Today's goal: build acceleration and hip drive. Visualize explosive movement.",
-          description: 'Take a moment to mentally prepare for the workout. Focus on the key movement patterns and your training intention for today.'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 1',
-          exercise_name: 'Dynamic Warm-up',
-          category: 'Warm-up' as const,
-          type: 'time' as const,
-          sets: 1,
-          duration: 5,
-          rest: 60,
-          cues: 'Light movement to prepare joints and muscles'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 1',
-          exercise_name: 'Squats',
-          category: 'Primary' as const,
-          type: 'weights' as const,
-          sets: 3,
-          reps: 10,
-          weight: 100,
-          rest: 90,
-          cues: 'Keep chest up and drive through heels',
-          guidance: '70% 1RM',
-          description: 'Stand with feet shoulder-width apart. Lower until thighs are parallel to ground. Drive through heels to return to standing.'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 1',
-          exercise_name: 'Bench Press',
-          category: 'Primary' as const,
-          type: 'weights' as const,
-          sets: 3,
-          reps: 8,
-          weight: 80,
-          rest: 90,
-          cues: 'Control the descent and pause at chest'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 1',
-          exercise_name: 'Plank',
-          category: 'Additional' as const,
-          type: 'time' as const,
-          sets: 3,
-          duration: 2,
-          rest: 60,
-          cues: 'Maintain straight line from head to heels'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 1',
-          exercise_name: 'Cool-down Stretch',
-          category: 'Cool-down' as const,
-          type: 'time' as const,
-          sets: 1,
-          duration: 10,
-          rest: 0,
-          cues: 'Hold each stretch for 30 seconds'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 2',
-          exercise_name: 'Light Cardio',
-          category: 'Warm-up' as const,
-          type: 'time' as const,
-          sets: 1,
-          duration: 10,
-          rest: 60,
-          cues: 'Easy pace to get blood flowing'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 2',
-          exercise_name: 'Deadlifts',
-          category: 'Primary' as const,
-          type: 'weights' as const,
-          sets: 3,
-          reps: 5,
-          weight: 120,
-          rest: 120,
-          cues: 'Maintain neutral spine and engage lats'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 2',
-          exercise_name: 'Pull-ups',
-          category: 'Secondary' as const,
-          type: 'weights' as const,
-          sets: 3,
-          reps: 8,
-          rest: 90,
-          cues: 'Pull chest to bar and control descent',
-          guidance: 'Per side if using assistance'
-        },
-        {
-          block_id: 'Week 1',
-          day: 'Day 2',
-          exercise_name: 'Band Face Pulls',
-          category: 'Additional' as const,
-          type: 'weights' as const,
-          sets: 3,
-          reps: 15,
-          rest: 60,
-          cues: 'Pull band to face level, squeeze shoulder blades',
-          resistance: 'Red band (heavy)',
-          description: 'Attach band at face height. Pull handles toward face while keeping elbows high. Focus on rear deltoid activation.'
+      console.log('Loading Ultimate Frisbee test data...');
+      // Fetch the Ultimate Frisbee preseason workout TSV file
+      const response = await fetch('/fitflow/ultimate_frisbee_preseason.tsv');
+      console.log('Fetch response status:', response.status);
+      const tsvText = await response.text();
+      
+      // Parse TSV file
+      const lines = tsvText.trim().split('\n');
+      const headers = lines[0].split('\t');
+      
+      // Track unique blocks to create
+      const blocksToCreate = new Set<string>();
+      const workouts: any[] = [];
+      
+      // Parse each line (skip header)
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split('\t');
+        if (values.length < headers.length) continue; // Skip incomplete lines
+        
+        const workout: any = {};
+        headers.forEach((header, index) => {
+          const value = values[index]?.trim();
+          workout[header] = value || undefined;
+        });
+        
+        // Track blocks
+        if (workout.block_id) {
+          blocksToCreate.add(workout.block_id);
         }
-      ];
-
-      await dbHelpers.importWorkouts(testWorkouts);
+        
+        // Convert to proper types
+        const processedWorkout = {
+          block_id: workout.block_id,
+          day: workout.day,
+          exercise_name: workout.exercise_name,
+          category: workout.category as 'Warm-up' | 'Primary' | 'Secondary' | 'Additional' | 'Cool-down' | 'Intent',
+          type: workout.type as 'weights' | 'time' | 'mindset',
+          sets: parseInt(workout.sets) || 1,
+          reps: workout.reps ? parseInt(workout.reps) : undefined,
+          weight: workout.weight && workout.weight !== 'Bodyweight' && !isNaN(parseFloat(workout.weight)) 
+            ? parseFloat(workout.weight) 
+            : undefined,
+          duration: workout.duration ? parseFloat(workout.duration) : undefined,
+          rest: parseInt(workout.rest) || 0,
+          cues: workout.cues || '',
+          guidance: workout.guidance || undefined,
+          resistance: workout.resistance || undefined,
+          description: workout.description || undefined
+        };
+        
+        workouts.push(processedWorkout);
+      }
+      
+      // Create blocks (first one active, rest inactive)
+      const blockArray = Array.from(blocksToCreate);
+      for (let i = 0; i < blockArray.length; i++) {
+        await dbHelpers.createBlock({
+          block_id: blockArray[i],
+          block_name: blockArray[i],
+          is_active: i === 0 ? 1 : 0,
+          created_at: new Date()
+        });
+      }
+      
+      // Import workouts
+      console.log('Importing', workouts.length, 'workouts from', blockArray.length, 'blocks');
+      console.log('First workout:', workouts[0]);
+      await dbHelpers.importWorkouts(workouts);
+      console.log('Import complete!');
       
       // Reload the page to show the new data
       window.location.reload();
     } catch (error) {
       console.error('Error loading test data:', error);
+      alert('Error loading test data. Check console for details.');
     }
   };
 
