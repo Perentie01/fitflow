@@ -65,8 +65,19 @@ function App() {
   const loadBlocks = async () => {
     try {
       const allBlocks = await dbHelpers.getAllBlocks();
+      
+      // Filter blocks that have at least one workout
+      const blocksWithWorkouts = await Promise.all(
+        allBlocks.map(async (block) => {
+          const workouts = await dbHelpers.getWorkoutsByBlock(block.block_id);
+          return workouts.length > 0 ? block : null;
+        })
+      );
+      
+      const validBlocks = blocksWithWorkouts.filter((block): block is Block => block !== null);
+      
       // Sort blocks alphabetically by block_name
-      const sortedBlocks = allBlocks.sort((a, b) => a.block_name.localeCompare(b.block_name));
+      const sortedBlocks = validBlocks.sort((a, b) => a.block_name.localeCompare(b.block_name));
       setBlocks(sortedBlocks);
       
       const active = await dbHelpers.getActiveBlock();
@@ -444,10 +455,13 @@ function App() {
     <div className="space-y-4 pb-20">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Upload className="h-5 w-5" />
-            <span>Import Workouts</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center space-x-2">
+              <Upload className="h-5 w-5" />
+              <span>Import Workouts</span>
+            </CardTitle>
+            <span className="text-xs text-muted-foreground">v1.1.0</span>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -529,19 +543,20 @@ function App() {
               <p><strong>Intent exercises:</strong> Use category=Intent, type=mindset for mental prep</p>
               <p><strong>Guidance:</strong> Instructions like "70% 1RM" or "per side"</p>
               <p><strong>Resistance:</strong> For non-weight exercises like "Red band"</p>
+              <p><strong>Description:</strong> Detailed exercise setup and execution (e.g., "Stand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground...")</p>
             </div>
           </div>
           <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
 {`block_id	day	exercise_name	category	type	sets	reps	weight	duration	rest	cues	guidance	resistance	description
 Week 1	Day 1	Focus	Intent	mindset	1			2	0	Today's goal: build power, focus on explosive movement			
-Week 1	Day 1	Squats	Primary	weights	3	10	100		90	Keep chest up, drive through heels	70% 1RM		Full squat description here
+Week 1	Day 1	Squats	Primary	weights	3	10	100		90	Keep chest up, drive through heels	70% 1RM		Stand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.
 Week 1	Day 1	Band Pull	Additional	weights	3	15			60	Control the movement, squeeze at the top		Red band	`}
           </pre>
           <Popover open={showCopySuccess}>
             <PopoverTrigger asChild>
               <Button 
                 onClick={() => {
-                  const combined = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nAdd detailed descriptions for complex exercises.\n\nExample format (columns separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\tFull squat description here\nWeek 1\\tDay 1\\tBand Pull\\tAdditional\\tweights\\t3\\t15\\t\\t\\t60\\tControl the movement, squeeze at the top\\t\\tRed band\\t`;
+                  const combined = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nUse description for detailed exercise setup and execution (e.g., "Stand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.").\n\nExample format (columns separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\tStand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.\nWeek 1\\tDay 1\\tBand Pull\\tAdditional\\tweights\\t3\\t15\\t\\t\\t60\\tControl the movement, squeeze at the top\\t\\tRed band\\t`;
                   navigator.clipboard.writeText(combined);
                   setShowCopySuccess(true);
                   setTimeout(() => setShowCopySuccess(false), 2000);
