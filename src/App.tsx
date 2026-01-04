@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/popover";
 import { WorkoutCard } from "./components/WorkoutCard";
 import { Carousel } from "./components/Carousel";
+import { ScrollSnapContainer } from "./components/ScrollSnapContainer";
+import { ScrollSnapSection } from "./components/ScrollSnapSection";
 import { BottomNav } from "./components/BottomNav";
 import { TestDataButton } from "./components/TestDataButton";
 import { ProgressTab } from "./components/ProgressTab";
@@ -467,9 +469,9 @@ function App() {
     }
 
     return (
-      <div className="space-y-3 pb-20">
+      <div className="md:space-y-3 md:pb-20">
         {/* Modern Minimal Block and Day Selector */}
-        <div className="flex items-center justify-between px-1">
+        <div className="flex items-center justify-between px-4 py-3 md:px-1">
           <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
             <DialogTrigger asChild>
               <button className="text-lg font-bold hover:text-blue-600 transition-colors">
@@ -523,7 +525,7 @@ function App() {
         </div>
         {/* Day Pills */}
         {availableDays.length > 0 && (
-          <div className="flex flex-wrap gap-2 px-1">
+          <div className="flex flex-wrap gap-2 px-4 pb-3 md:px-1">
             {availableDays.map((day) => (
               <button key={day} onClick={() => setSelectedDay(day)}>
                 {day}
@@ -534,18 +536,19 @@ function App() {
 
         {/* Workouts */}
         {selectedDay && (
-          <div className="space-y-4">
-            {Object.entries(groupWorkoutsByCategory(getDayWorkouts())).map(
-              ([category, categoryWorkouts]) => (
-                <div key={category}>
-                  <h3 className="font-semibold text-lg mb-3 flex items-center space-x-2">
-                    <span>{category}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {categoryWorkouts.length}
-                    </Badge>
-                  </h3>
-                  <div className="md:flex md:flex-col md:gap-3">
-                    <div className="hidden md:flex md:flex-col md:gap-3">
+          <>
+            {/* Desktop view - traditional list layout */}
+            <div className="hidden md:block space-y-4">
+              {Object.entries(groupWorkoutsByCategory(getDayWorkouts())).map(
+                ([category, categoryWorkouts]) => (
+                  <div key={category}>
+                    <h3 className="font-semibold text-lg mb-3 flex items-center space-x-2">
+                      <span>{category}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {categoryWorkouts.length}
+                      </Badge>
+                    </h3>
+                    <div className="flex flex-col gap-3">
                       {categoryWorkouts.map((workout) => (
                         <WorkoutCard
                           key={workout.id}
@@ -554,22 +557,39 @@ function App() {
                         />
                       ))}
                     </div>
-
-                    <Carousel
-                      items={categoryWorkouts}
-                      renderItem={(workout) => (
-                        <WorkoutCard
-                          workout={workout}
-                          onProgressUpdate={() => {}}
-                        />
-                      )}
-                      className="w-[78vw] max-w-sm"
-                    />
                   </div>
-                </div>
-              ),
-            )}
-          </div>
+                ),
+              )}
+            </div>
+
+            {/* Mobile view - scroll snap sections */}
+            <ScrollSnapContainer>
+              {Object.entries(groupWorkoutsByCategory(getDayWorkouts())).map(
+                ([category, categoryWorkouts]) => (
+                  <ScrollSnapSection key={category}>
+                    <h3 className="font-semibold text-2xl mb-4 flex items-center space-x-2">
+                      <span>{category}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {categoryWorkouts.length}
+                      </Badge>
+                    </h3>
+                    <div className="flex-1 flex items-center justify-center">
+                      <Carousel
+                        items={categoryWorkouts}
+                        renderItem={(workout) => (
+                          <WorkoutCard
+                            workout={workout}
+                            onProgressUpdate={() => {}}
+                          />
+                        )}
+                        className="w-[85vw] max-w-md"
+                      />
+                    </div>
+                  </ScrollSnapSection>
+                ),
+              )}
+            </ScrollSnapContainer>
+          </>
         )}
 
         {availableDays.length === 0 && (
@@ -801,7 +821,7 @@ Week 1	Day 1	Band Pull	Additional	weights	3	15			60	Control the movement, squeez
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 py-4">
+      <div className={`container mx-auto ${activeTab === "workouts" ? "md:px-4 md:py-4" : "px-4 py-4"}`}>
         {activeTab === "workouts" && renderWorkoutsTab()}
         {activeTab === "config" && renderConfigTab()}
         {activeTab === "progress" && <ProgressTab />}

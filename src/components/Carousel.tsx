@@ -12,7 +12,7 @@ export const Carousel = <T,>({ items, renderItem, className = "" }: CarouselProp
   if (items.length === 0) return null;
 
   return (
-    <div className="md:hidden">
+    <div className="w-full">
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex">
           {items.map((item, index) => (
@@ -25,7 +25,7 @@ export const Carousel = <T,>({ items, renderItem, className = "" }: CarouselProp
         </div>
       </div>
       {items.length > 1 && (
-        <div className="flex justify-center mt-2 space-x-2">
+        <div className="flex justify-center mt-4 space-x-2">
           {scrollSnaps.map((_, index) => (
             <button
               key={index}
