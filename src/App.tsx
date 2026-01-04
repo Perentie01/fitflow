@@ -341,6 +341,57 @@ function App() {
     }, {} as Record<string, Workout[]>);
   };
 
+  const [carouselIndex, setCarouselIndex] = useState<Record<string, number>>({});
+  const touchStartX = useRef<number | null>(null);
+  const touchDeltaX = useRef(0);
+
+  useEffect(() => {
+    setCarouselIndex({});
+  }, [selectedDay]);
+
+  useEffect(() => {
+    setCarouselIndex({});
+  }, [activeBlock]);
+
+  const handleTouchStart = (event: React.TouchEvent) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+    touchDeltaX.current = 0;
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const currentX = event.touches[0]?.clientX;
+    if (currentX === undefined) return;
+    touchDeltaX.current = currentX - touchStartX.current;
+  };
+
+  const handleTouchEnd = (category: string, length: number) => {
+    if (length <= 1) return;
+
+    const delta = touchDeltaX.current;
+    const swipeThreshold = 40;
+
+    if (delta > swipeThreshold) {
+      handleCarouselNav(category, 'prev', length);
+    } else if (delta < -swipeThreshold) {
+      handleCarouselNav(category, 'next', length);
+    }
+
+    touchStartX.current = null;
+    touchDeltaX.current = 0;
+  };
+
+  const handleCarouselNav = (category: string, direction: 'prev' | 'next', length: number) => {
+    if (length === 0) return;
+
+    setCarouselIndex(prev => {
+      const current = prev[category] ?? 0;
+      const nextIndex = direction === 'prev'
+        ? (current - 1 + length) % length
+        : (current + 1) % length;
+      return { ...prev, [category]: nextIndex };
+    });
+  };
   const renderWorkoutsTab = () => {
     // Show blank screen only if no blocks exist
     if (!activeBlock || blocks.length === 0) {
@@ -421,15 +472,46 @@ function App() {
                 <span>{category}</span>
                 <Badge variant="secondary">{categoryWorkouts.length}</Badge>
               </h3>
-              <div className="space-y-3">
-                {categoryWorkouts.map((workout) => (
-                  <WorkoutCard
-                    key={workout.id}
-                    workout={workout}
-                    onProgressUpdate={() => {}}
-                  />
-                ))}
-              </div>
+             <div className="md:flex md:flex-col md:gap-3">
+                <div className="hidden md:flex md:flex-col md:gap-3">
+                  {categoryWorkouts.map((workout) => (
+                    <WorkoutCard
+                      key={workout.id}
+                      workout={workout}
+                      onProgressUpdate={() => {}}
+                    />
+                  ))}
+                </div>
+
+                <div className="md:hidden">
+                  {categoryWorkouts.length > 0 && (
+                    <div className="relative">
+                      <div
+                        className="flex justify-center"
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={() => handleTouchEnd(category, categoryWorkouts.length)}
+                      >
+                        <div className="w-[78vw] max-w-sm">
+                          <WorkoutCard
+                            workout={categoryWorkouts[carouselIndex[category] ?? 0]}
+                            onProgressUpdate={() => {}}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {categoryWorkouts.length > 1 && (
+                    <div className="flex justify-center mt-2 space-x-2">
+                      {categoryWorkouts.map((_, index) => (
+                        <span
+                          key={index}
+                          className={`h-2 w-2 rounded-full ${index === (carouselIndex[category] ?? 0) ? 'bg-blue-600' : 'bg-gray-300'}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
             </div>
           ))}
         </div>
