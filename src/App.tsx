@@ -421,14 +421,17 @@ function App() {
                 <span>{category}</span>
                 <Badge variant="secondary">{categoryWorkouts.length}</Badge>
               </h3>
-              <div className="space-y-3">
-                {categoryWorkouts.map((workout) => (
-                  <WorkoutCard
-                    key={workout.id}
-                    workout={workout}
-                    onProgressUpdate={() => {}}
-                  />
-                ))}
+              <div className="overflow-x-auto -mx-1 px-1 md:overflow-visible">
+                <div className="flex gap-3 md:flex-col">
+                  {categoryWorkouts.map((workout) => (
+                    <div key={workout.id} className="shrink-0 min-w-[85vw] md:min-w-0">
+                      <WorkoutCard
+                        workout={workout}
+                        onProgressUpdate={() => {}}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
