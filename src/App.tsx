@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useLocalStorage, usePrevious, useToggle } from "@uidotdev/usehooks";
+import { useLocalStorage, useToggle } from "@uidotdev/usehooks";
 import {
   Calendar,
   ChevronLeft,
@@ -26,6 +26,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { WorkoutCard } from "./components/WorkoutCard";
+import { Carousel } from "./components/Carousel";
 import { BottomNav } from "./components/BottomNav";
 import { TestDataButton } from "./components/TestDataButton";
 import { ProgressTab } from "./components/ProgressTab";
@@ -39,7 +40,7 @@ import "./App.css";
 
 const AI_COPY_TEMPLATE = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nUse description for detailed exercise setup and execution (e.g., "Stand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.").\n\nExample format (columns separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\tStand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.\nWeek 1\\tDay 1\\tBand Pull\\tAdditional\\tweights\\t3\\t15\\t\\t\\t60\\tControl the movement, squeeze at the top\\t\\tRed band\\t`;
 
-const APP_VERSION = "v1.1.0";
+const APP_VERSION = "v1.2.0";
 const CATEGORIES = [
   "Intent",
   "Warm-up",
@@ -71,7 +72,6 @@ const EXPORT_HEADERS = [
   "notes",
 ];
 
-const SWIPE_THRESHOLD = 40;
 type WorkoutWithLogged = Workout & { logged_sets?: any[] };
 
 function App() {
@@ -454,69 +454,6 @@ function App() {
       {} as Record<string, Workout[]>,
     );
   };
-
-  const [carouselIndex, setCarouselIndex] = useState<Record<string, number>>(
-    {},
-  );
-  const touchStartX = useRef<number | null>(null);
-  const touchDeltaX = useRef(0);
-
-  const prevSelectedDay = usePrevious(selectedDay);
-  const prevActiveBlockId = usePrevious(activeBlock?.block_id);
-
-  useEffect(() => {
-    if (
-      prevSelectedDay !== selectedDay ||
-      prevActiveBlockId !== activeBlock?.block_id
-    ) {
-      setCarouselIndex({});
-    }
-  }, [selectedDay, activeBlock?.block_id, prevSelectedDay, prevActiveBlockId]);
-
-  const handleTouchStart = (event: React.TouchEvent) => {
-    touchStartX.current = event.touches[0]?.clientX ?? null;
-    touchDeltaX.current = 0;
-  };
-
-  const handleTouchMove = (event: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const currentX = event.touches[0]?.clientX;
-    if (currentX === undefined) return;
-    touchDeltaX.current = currentX - touchStartX.current;
-  };
-
-  const handleTouchEnd = (category: string, length: number) => {
-    if (length <= 1) return;
-
-    const delta = touchDeltaX.current;
-    const swipeThreshold = SWIPE_THRESHOLD;
-
-    if (delta > swipeThreshold) {
-      handleCarouselNav(category, "prev", length);
-    } else if (delta < -swipeThreshold) {
-      handleCarouselNav(category, "next", length);
-    }
-
-    touchStartX.current = null;
-    touchDeltaX.current = 0;
-  };
-
-  const handleCarouselNav = (
-    category: string,
-    direction: "prev" | "next",
-    length: number,
-  ) => {
-    if (length === 0) return;
-
-    setCarouselIndex((prev) => {
-      const current = prev[category] ?? 0;
-      const nextIndex =
-        direction === "prev"
-          ? (current - 1 + length) % length
-          : (current + 1) % length;
-      return { ...prev, [category]: nextIndex };
-    });
-  };
   const renderWorkoutsTab = () => {
     // Show blank screen only if no blocks exist
     if (!activeBlock || blocks.length === 0) {
@@ -618,39 +555,16 @@ function App() {
                       ))}
                     </div>
 
-                    <div className="md:hidden">
-                      {categoryWorkouts.length > 0 && (
-                        <div className="relative">
-                          <div
-                            className="flex justify-center"
-                            onTouchStart={handleTouchStart}
-                            onTouchMove={handleTouchMove}
-                            onTouchEnd={() =>
-                              handleTouchEnd(category, categoryWorkouts.length)
-                            }
-                          >
-                            <div className="w-[78vw] max-w-sm">
-                              <WorkoutCard
-                                workout={
-                                  categoryWorkouts[carouselIndex[category] ?? 0]
-                                }
-                                onProgressUpdate={() => {}}
-                              />
-                            </div>
-                          </div>
-                        </div>
+                    <Carousel
+                      items={categoryWorkouts}
+                      renderItem={(workout) => (
+                        <WorkoutCard
+                          workout={workout}
+                          onProgressUpdate={() => {}}
+                        />
                       )}
-                      {categoryWorkouts.length > 1 && (
-                        <div className="flex justify-center mt-2 space-x-2">
-                          {categoryWorkouts.map((_, index) => (
-                            <span
-                              key={index}
-                              className={`h-2 w-2 rounded-full ${index === (carouselIndex[category] ?? 0) ? "bg-blue-600" : "bg-gray-300"}`}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                      className="w-[78vw] max-w-sm"
+                    />
                   </div>
                 </div>
               ),
