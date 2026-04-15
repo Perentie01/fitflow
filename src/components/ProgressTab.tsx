@@ -1,134 +1,120 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Weight, Timer } from 'lucide-react';
-import { dbHelpers } from '../lib/database';
+import { dbHelpers, Progress, Workout } from '../lib/database';
 
-interface ProgressData {
-  id?: number;
-  workout_id: number;
-  set_number: number;
-  completed_reps?: number;
-  completed_weight?: number;
-  completed_duration?: number;
-  notes?: string;
-  completed_at: string;
-  workout?: {
-    id: number;
-    block_id: string;
-    day: string;
-    exercise_name: string;
+type ProgressWithWorkout = Progress & { workout?: Workout };
+
+interface WorkoutSession {
+  block_id: string;
+  day: string;
+  date: Date;
+  exercises: Array<{
+    name: string;
     category: string;
-    sets: number;
-    reps?: number;
-    weight?: number;
-    duration?: number;
-    rest?: number;
-    cues?: string;
-    guidance?: string;
-    description?: string;
-  };
+    sets: Array<{
+      set_number: number;
+      reps?: number;
+      weight?: number;
+      duration?: number;
+      notes?: string;
+    }>;
+  }>;
+}
+
+interface ExerciseHistoryEntry {
+  date: Date;
+  weight: number;
+  reps?: number;
+  set_number: number;
+  block_id: string;
+  day: string;
 }
 
 export function ProgressTab() {
-  const [progressData, setProgressData] = useState<ProgressData[]>([]);
+  const [progressData, setProgressData] = useState<ProgressWithWorkout[]>([]);
   const [selectedView, setSelectedView] = useState<'workouts' | 'exercises'>('workouts');
 
   useEffect(() => {
-    loadProgressData();
+    dbHelpers
+      .getProgressWithWorkoutDetails()
+      .then(setProgressData)
+      .catch((error) => console.error('Error loading progress:', error));
   }, []);
 
-  const loadProgressData = async () => {
-    try {
-      const data = await dbHelpers.getProgressWithWorkoutDetails();
-      setProgressData(data);
-    } catch (error) {
-      console.error('Error loading progress:', error);
-    }
-  };
+  const workoutSessions = useMemo<WorkoutSession[]>(() => {
+    const sessionsMap = new Map<string, WorkoutSession & { exercises: Map<string, WorkoutSession['exercises'][number]> }>();
 
-  // Group progress by workout session (block + day + date)
-  const workoutSessions = useMemo(() => {
-    const sessionsMap = new Map<string, any>();
-
-    progressData.forEach(progress => {
+    progressData.forEach((progress) => {
       if (!progress.workout) return;
-      
+
       const dateStr = new Date(progress.completed_at).toDateString();
       const sessionKey = `${progress.workout.block_id}-${progress.workout.day}-${dateStr}`;
-      
+
       if (!sessionsMap.has(sessionKey)) {
         sessionsMap.set(sessionKey, {
           block_id: progress.workout.block_id,
           day: progress.workout.day,
           date: new Date(progress.completed_at),
-          exercises: new Map()
+          exercises: new Map(),
         });
       }
-      
-      const session = sessionsMap.get(sessionKey);
+
+      const session = sessionsMap.get(sessionKey)!;
       const exerciseKey = progress.workout.exercise_name;
-      
+
       if (!session.exercises.has(exerciseKey)) {
         session.exercises.set(exerciseKey, {
           name: progress.workout.exercise_name,
           category: progress.workout.category,
-          sets: []
+          sets: [],
         });
       }
-      
-      session.exercises.get(exerciseKey).sets.push({
+
+      session.exercises.get(exerciseKey)!.sets.push({
         set_number: progress.set_number,
         reps: progress.completed_reps,
         weight: progress.completed_weight,
         duration: progress.completed_duration,
-        notes: progress.notes
+        notes: progress.notes,
       });
     });
 
     return Array.from(sessionsMap.values())
       .sort((a, b) => b.date.getTime() - a.date.getTime())
-      .map(session => ({
+      .map((session) => ({
         ...session,
-        exercises: Array.from(session.exercises.values())
+        exercises: Array.from(session.exercises.values()),
       }));
   }, [progressData]);
 
-  // Group progress by exercise for weight tracking
-  const exerciseHistory = useMemo(() => {
-    const history = new Map<string, any[]>();
-    
-    progressData.forEach(progress => {
-      // Only track exercises with weights
+  const exerciseHistory = useMemo<Map<string, ExerciseHistoryEntry[]>>(() => {
+    const history = new Map<string, ExerciseHistoryEntry[]>();
+
+    progressData.forEach((progress) => {
       if (!progress.completed_weight || !progress.workout) return;
-      
-      const exerciseName = progress.workout.exercise_name;
-      if (!history.has(exerciseName)) {
-        history.set(exerciseName, []);
-      }
-      
-      history.get(exerciseName)!.push({
+
+      const name = progress.workout.exercise_name;
+      if (!history.has(name)) history.set(name, []);
+
+      history.get(name)!.push({
         date: new Date(progress.completed_at),
         weight: progress.completed_weight,
         reps: progress.completed_reps,
         set_number: progress.set_number,
         block_id: progress.workout.block_id,
-        day: progress.workout.day
+        day: progress.workout.day,
       });
     });
 
-    // Sort each exercise's history by date (most recent first)
-    history.forEach((sessions) => {
-      sessions.sort((a, b) => b.date.getTime() - a.date.getTime());
-    });
-
+    history.forEach((entries) => entries.sort((a, b) => b.date.getTime() - a.date.getTime()));
     return history;
   }, [progressData]);
 
   return (
     <div className="space-y-4 pb-20">
-      {/* View Toggle */}
       <div className="flex gap-2 sticky top-0 bg-background dark:bg-gray-900 z-10 py-2">
         <Button
           variant={selectedView === 'workouts' ? 'default' : 'outline'}
@@ -146,7 +132,6 @@ export function ProgressTab() {
         </Button>
       </div>
 
-      {/* Previous Workouts View */}
       {selectedView === 'workouts' && (
         <div className="space-y-3">
           {workoutSessions.length === 0 ? (
@@ -154,7 +139,9 @@ export function ProgressTab() {
               <CardContent className="text-center py-12 text-muted-foreground">
                 <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="font-medium">No workouts logged yet</p>
-                <p className="text-sm mt-2">Complete exercises in the Workouts tab to track progress</p>
+                <p className="text-sm mt-2">
+                  Complete exercises in the Workouts tab to track progress
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -164,11 +151,11 @@ export function ProgressTab() {
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-semibold">
-                        {session.date.toLocaleDateString('en-US', { 
-                          weekday: 'short', 
-                          month: 'short', 
+                        {session.date.toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
                           day: 'numeric',
-                          year: 'numeric'
+                          year: 'numeric',
                         })}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
@@ -176,26 +163,30 @@ export function ProgressTab() {
                       </div>
                     </div>
                     <Badge variant="outline" className="text-xs">
-                      {session.exercises.length} {session.exercises.length === 1 ? 'exercise' : 'exercises'}
+                      {session.exercises.length}{' '}
+                      {session.exercises.length === 1 ? 'exercise' : 'exercises'}
                     </Badge>
                   </div>
                 </div>
                 <CardContent className="p-0">
                   <div className="divide-y dark:divide-gray-800">
-                    {session.exercises.map((exercise: any, exIdx: number) => (
-                      <div key={exIdx} className="px-4 py-3 hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-colors">
+                    {session.exercises.map((exercise, exIdx) => (
+                      <div
+                        key={exIdx}
+                        className="px-4 py-3 hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-colors"
+                      >
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{exercise.name}</div>
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs"
-                          >
+                          <Badge variant="outline" className="text-xs">
                             {exercise.category}
                           </Badge>
                         </div>
                         <div className="space-y-1.5">
-                          {exercise.sets.map((set: any, setIdx: number) => (
-                            <div key={setIdx} className="flex justify-between items-center text-sm">
+                          {exercise.sets.map((set, setIdx) => (
+                            <div
+                              key={setIdx}
+                              className="flex justify-between items-center text-sm"
+                            >
                               <span className="text-muted-foreground">Set {set.set_number}</span>
                               <div className="flex gap-3 items-center">
                                 {set.reps && (
@@ -222,9 +213,9 @@ export function ProgressTab() {
                             </div>
                           ))}
                         </div>
-                        {exercise.sets.some((s: any) => s.notes) && (
+                        {exercise.sets.some((s) => s.notes) && (
                           <div className="mt-2 text-xs italic text-muted-foreground border-l-2 border-blue-500 pl-2">
-                            {exercise.sets.find((s: any) => s.notes)?.notes}
+                            {exercise.sets.find((s) => s.notes)?.notes}
                           </div>
                         )}
                       </div>
@@ -237,7 +228,6 @@ export function ProgressTab() {
         </div>
       )}
 
-      {/* Exercise History View */}
       {selectedView === 'exercises' && (
         <div className="space-y-3">
           {exerciseHistory.size === 0 ? (
@@ -261,17 +251,20 @@ export function ProgressTab() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-0 divide-y dark:divide-gray-800">
-                    {history.slice(0, 10).map((entry: any, idx: number) => (
-                      <div 
-                        key={idx} 
+                    {history.slice(0, 10).map((entry, idx) => (
+                      <div
+                        key={idx}
                         className="flex justify-between items-center py-2.5 first:pt-0"
                       >
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">
-                            {entry.date.toLocaleDateString('en-US', { 
-                              month: 'short', 
+                            {entry.date.toLocaleDateString('en-US', {
+                              month: 'short',
                               day: 'numeric',
-                              year: entry.date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                              year:
+                                entry.date.getFullYear() !== new Date().getFullYear()
+                                  ? 'numeric'
+                                  : undefined,
                             })}
                           </span>
                           <span className="text-xs text-muted-foreground">
@@ -295,7 +288,8 @@ export function ProgressTab() {
                     ))}
                     {history.length > 10 && (
                       <div className="text-center text-xs text-muted-foreground pt-3">
-                        +{history.length - 10} more {history.length - 10 === 1 ? 'entry' : 'entries'}
+                        +{history.length - 10} more{' '}
+                        {history.length - 10 === 1 ? 'entry' : 'entries'}
                       </div>
                     )}
                   </div>
@@ -308,4 +302,3 @@ export function ProgressTab() {
     </div>
   );
 }
-
