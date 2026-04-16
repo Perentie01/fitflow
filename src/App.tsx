@@ -15,10 +15,6 @@ function AppContent() {
   const [compactMode, setCompactMode] = useState(false);
   const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
   const { reloadBlocks } = useBlock();
-
-  useSync(() => reloadBlocks());
-
-  const { reloadBlocks } = useBlock();
   useSync(reloadBlocks);
 
   const handleCompactModeChange = (compact: boolean) => {
