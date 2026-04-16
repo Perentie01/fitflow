@@ -37,6 +37,8 @@ jobs:
       - name: Build project
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: pnpm run build
 
       - name: Upload production-ready build files
