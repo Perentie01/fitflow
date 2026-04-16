@@ -109,10 +109,8 @@ export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout }: Worko
       <CardHeader className="pb-1">
         <div className="flex justify-between items-start">
           <button
-            onClick={() => workout.description && setDescriptionDialogOpen(true)}
-            className={`text-lg font-semibold text-left ${
-              workout.description ? 'hover:text-primary cursor-pointer' : ''
-            }`}
+            onClick={() => setDescriptionDialogOpen(true)}
+            className="text-lg font-semibold text-left hover:text-primary cursor-pointer"
           >
             {workout.exercise_name}
           </button>
@@ -312,11 +310,9 @@ export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout }: Worko
             <DialogTitle>{workout.exercise_name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {workout.description && (
-              <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-                {workout.description}
-              </div>
-            )}
+            <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
+              {workout.description}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
