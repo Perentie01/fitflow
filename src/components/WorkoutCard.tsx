@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Timer, Weight, Check, Brain, ChevronDown, ChevronUp } from 'lucide-react';
+import { Timer, Weight, Check, Brain, ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { Workout, dbHelpers } from '../lib/database';
 import { getCategoryColor } from '../lib/workoutUtils';
 import type { SetProgress } from '../lib/types';
@@ -12,9 +12,10 @@ import type { SetProgress } from '../lib/types';
 interface WorkoutCardProps {
   workout: Workout;
   onProgressUpdate?: () => void;
+  onBeginWorkout?: () => void;
 }
 
-export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
+export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout }: WorkoutCardProps) {
   const [setProgress, setSetProgress] = useState<SetProgress[]>([]);
   const [isLogging, setIsLogging] = useState(false);
   const [showProgressForm, setShowProgressForm] = useState(false);
@@ -175,13 +176,24 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
           </div>
         )}
 
+        {workout.category === 'Intent' && onBeginWorkout && (
+          <Button
+            onClick={onBeginWorkout}
+            variant="default"
+            className="w-full gap-2"
+          >
+            <Play className="h-4 w-4" />
+            Begin Workout
+          </Button>
+        )}
+
         {!isMindsetExercise && workout.category !== 'Intent' && !showProgressForm && (
           <div className="relative">
             <Button
               onClick={() => setShowProgressForm(true)}
               className={
                 hasLoggedProgress
-                  ? 'w-full bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-800 dark:hover:bg-emerald-900 text-white'
+                  ? 'w-full bg-[#6B9E72] hover:bg-[#5A8A60] text-white'
                   : 'w-full'
               }
               variant={hasLoggedProgress ? 'default' : 'outline'}
@@ -196,7 +208,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
               )}
             </Button>
             {showSaveSuccess && (
-              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-3 py-1 rounded shadow-lg">
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-[#6B9E72] text-white text-xs px-3 py-1 rounded shadow-lg">
                 ✓ Saved
               </div>
             )}

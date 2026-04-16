@@ -208,7 +208,7 @@ export function ConfigTab() {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-2" side="top">
                 <div className="flex items-center space-x-2 text-sm">
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4 text-[#6B9E72]" />
                   <span>Imported successfully</span>
                 </div>
               </PopoverContent>
@@ -225,7 +225,7 @@ export function ConfigTab() {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-2" side="top">
                   <div className="flex items-center space-x-2 text-sm">
-                    <Check className="h-4 w-4 text-green-600" />
+                    <Check className="h-4 w-4 text-[#6B9E72]" />
                     <span>Exported successfully</span>
                   </div>
                 </PopoverContent>
@@ -289,7 +289,7 @@ Week 1\tDay 1\tBand Pull\tAdditional\tweights\t3\t15\t\t\t60\tControl the moveme
             </PopoverTrigger>
             <PopoverContent className="w-auto p-2" side="top">
               <div className="flex items-center space-x-2 text-sm">
-                <Check className="h-4 w-4 text-green-600" />
+                <Check className="h-4 w-4 text-[#6B9E72]" />
                 <span>Copied to clipboard!</span>
               </div>
             </PopoverContent>

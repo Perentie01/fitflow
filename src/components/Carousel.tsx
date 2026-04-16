@@ -31,7 +31,7 @@ export const Carousel = <T,>({ items, renderItem, className = "" }: CarouselProp
               key={index}
               onClick={() => scrollTo(index)}
               className={`h-2 w-2 rounded-full transition-colors ${
-                index === selectedIndex ? "bg-blue-600" : "bg-gray-300"
+                index === selectedIndex ? "bg-primary" : "bg-muted-foreground/30"
               }`}
               aria-label={`Go to slide ${index + 1}`}
             />

@@ -81,9 +81,9 @@ export function ImportDialog({
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-semibold text-blue-800 mb-2">Import Summary</h3>
-            <p className="text-sm text-blue-700">
+          <div className="bg-accent/50 border border-border rounded-lg p-4">
+            <h3 className="font-semibold text-foreground mb-2">Import Summary</h3>
+            <p className="text-sm text-muted-foreground">
               Total exercises: {pendingImport?.workoutData.length ?? 0}
               <br />
               Unique blocks: {pendingImport?.blockIds.size ?? 0}
