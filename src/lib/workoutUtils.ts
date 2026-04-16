@@ -15,15 +15,17 @@ export function groupWorkoutsByCategory(workouts: Workout[]): Record<string, Wor
   );
 }
 
-/** Tailwind classes for each workout category badge (dark-mode primary). */
+/** Tailwind classes for each workout category badge.
+ *  Uses design-system tokens only — no arbitrary Tailwind colors.
+ *  Intent gets the amber accent; everything else uses muted/secondary. */
 export function getCategoryColor(category: string): string {
   switch (category) {
-    case 'Warm-up':   return 'bg-amber-900/40 text-amber-300 dark:bg-amber-900/40 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300';
-    case 'Primary':   return 'bg-stone-200 text-stone-800 dark:bg-stone-700/50 dark:text-stone-200';
-    case 'Secondary': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300';
-    case 'Additional':return 'bg-stone-100 text-stone-600 dark:bg-stone-800/60 dark:text-stone-400';
-    case 'Cool-down': return 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300';
-    case 'Intent':    return 'bg-amber-100 text-amber-800 dark:bg-accent dark:text-accent-foreground';
+    case 'Intent':    return 'bg-accent text-accent-foreground';
+    case 'Primary':   return 'bg-secondary text-secondary-foreground';
+    case 'Warm-up':
+    case 'Secondary':
+    case 'Additional':
+    case 'Cool-down':
     default:          return 'bg-muted text-muted-foreground';
   }
 }
