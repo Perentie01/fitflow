@@ -110,7 +110,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
           <button
             onClick={() => workout.description && setDescriptionDialogOpen(true)}
             className={`text-lg font-semibold text-left ${
-              workout.description ? 'hover:text-blue-600 cursor-pointer' : ''
+              workout.description ? 'hover:text-primary cursor-pointer' : ''
             }`}
           >
             {workout.exercise_name}
@@ -128,40 +128,40 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
       <CardContent className="space-y-3">
         {!isMindsetExercise && workout.category !== 'Intent' && (
           <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-            <div>Sets: {workout.sets}</div>
+            <div>Sets: <span className="font-mono text-foreground">{workout.sets}</span></div>
             {workout.type === 'weights' && (
               <>
-                <div>Reps: {workout.reps || '-'}</div>
-                {showWeight && <div>Weight: {workout.weight}kg</div>}
+                <div>Reps: <span className="font-mono text-foreground">{workout.reps || '-'}</span></div>
+                {showWeight && <div>Weight: <span className="font-mono text-foreground">{workout.weight}kg</span></div>}
                 {workout.resistance && (
-                  <div className="col-span-2">Resistance: {workout.resistance}</div>
+                  <div className="col-span-2">Resistance: <span className="font-mono text-foreground">{workout.resistance}</span></div>
                 )}
               </>
             )}
-            {workout.type === 'time' && <div>Duration: {workout.duration}min</div>}
-            <div>Rest: {workout.rest}s</div>
+            {workout.type === 'time' && <div>Duration: <span className="font-mono text-foreground">{workout.duration}min</span></div>}
+            <div>Rest: <span className="font-mono text-foreground">{workout.rest}s</span></div>
           </div>
         )}
 
         {workout.guidance && (
-          <div className="p-2 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-md">
-            <div className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">
+          <div className="p-2 bg-accent border-l-4 border-primary rounded-r-md">
+            <div className="text-xs font-medium text-accent-foreground mb-1 tracking-wide">
               GUIDANCE
             </div>
-            <p className="text-sm text-amber-800 dark:text-amber-300 break-words">
+            <p className="text-sm text-accent-foreground break-words">
               {workout.guidance}
             </p>
           </div>
         )}
 
         {workout.cues && (
-          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 rounded-r-md">
+          <div className="p-2 bg-muted border-l-4 border-muted-foreground/40 rounded-r-md">
             <div className="flex justify-between items-center mb-1">
-              <div className="text-xs font-medium text-blue-700 dark:text-blue-400">FORM CUES</div>
+              <div className="text-xs font-medium text-muted-foreground tracking-wide">FORM CUES</div>
               {cuesAreLong && (
                 <button
                   onClick={() => setCuesExpanded(!cuesExpanded)}
-                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   {cuesExpanded ? (
                     <ChevronUp className="h-4 w-4" />
@@ -171,7 +171,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
                 </button>
               )}
             </div>
-            <p className="text-sm text-blue-800 dark:text-blue-300 break-words">{displayedCues}</p>
+            <p className="text-sm text-foreground break-words">{displayedCues}</p>
           </div>
         )}
 
@@ -181,7 +181,7 @@ export function WorkoutCard({ workout, onProgressUpdate }: WorkoutCardProps) {
               onClick={() => setShowProgressForm(true)}
               className={
                 hasLoggedProgress
-                  ? 'w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white'
+                  ? 'w-full bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-800 dark:hover:bg-emerald-900 text-white'
                   : 'w-full'
               }
               variant={hasLoggedProgress ? 'default' : 'outline'}

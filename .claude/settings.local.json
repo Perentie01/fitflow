@@ -1,9 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run:*)",
-      "Bash(pnpm install:*)",
-      "Bash(pnpm dev:*)"
+      "Bash(git merge:*)",
+      "Bash(pnpm build:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Skill(commit-commands:commit-push-pr)",
+      "Skill(commit-commands:commit-push-pr:*)"
     ]
   }
 }
