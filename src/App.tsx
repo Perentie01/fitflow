@@ -12,11 +12,11 @@ function App() {
 
   return (
     <BlockProvider>
-      <div className="min-h-screen bg-background transition-colors">
+      <div className="h-dvh flex flex-col bg-background transition-colors overflow-hidden">
         <Header />
 
         <div
-          className={`container mx-auto ${
+          className={`flex-1 overflow-y-auto container mx-auto ${
             activeTab === 'workouts' ? 'md:px-4 md:py-4' : 'px-4 py-4'
           }`}
         >

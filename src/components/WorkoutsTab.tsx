@@ -53,7 +53,7 @@ export function WorkoutsTab({ onNavigateToConfig }: WorkoutsTabProps) {
   const grouped = groupWorkoutsByCategory(dayWorkouts);
 
   return (
-    <div className="md:space-y-3 md:pb-20">
+    <div className="md:space-y-3">
       <BlockSelector />
 
       {availableDays.length > 0 && (

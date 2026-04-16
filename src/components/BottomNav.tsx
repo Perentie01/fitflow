@@ -14,7 +14,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border px-4 py-2 safe-area-pb">
+    <div className="shrink-0 bg-card border-t border-border px-4 py-2 safe-area-pb">
       <div className="flex justify-around items-center max-w-md mx-auto">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
