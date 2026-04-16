@@ -115,7 +115,7 @@ export function ProgressTab() {
 
   return (
     <div className="space-y-4 pb-20">
-      <div className="flex gap-2 sticky top-0 bg-background dark:bg-gray-900 z-10 py-2">
+      <div className="flex gap-2 sticky top-0 bg-background z-10 py-2">
         <Button
           variant={selectedView === 'workouts' ? 'default' : 'outline'}
           onClick={() => setSelectedView('workouts')}
@@ -147,10 +147,10 @@ export function ProgressTab() {
           ) : (
             workoutSessions.map((session, idx) => (
               <Card key={idx} className="overflow-hidden">
-                <div className="bg-muted dark:bg-gray-800 px-4 py-3 border-b">
+                <div className="bg-muted px-4 py-3 border-b border-border">
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="font-semibold">
+                      <div className="font-display text-base">
                         {session.date.toLocaleDateString('en-US', {
                           weekday: 'short',
                           month: 'short',
@@ -158,7 +158,7 @@ export function ProgressTab() {
                           year: 'numeric',
                         })}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
+                      <div className="font-mono text-xs text-muted-foreground mt-0.5">
                         {session.block_id} • {session.day}
                       </div>
                     </div>
@@ -169,11 +169,11 @@ export function ProgressTab() {
                   </div>
                 </div>
                 <CardContent className="p-0">
-                  <div className="divide-y dark:divide-gray-800">
+                  <div className="divide-y divide-border">
                     {session.exercises.map((exercise, exIdx) => (
                       <div
                         key={exIdx}
-                        className="px-4 py-3 hover:bg-muted/30 dark:hover:bg-gray-800/50 transition-colors"
+                        className="px-4 py-3 hover:bg-muted/50 transition-colors"
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{exercise.name}</div>
@@ -187,25 +187,25 @@ export function ProgressTab() {
                               key={setIdx}
                               className="flex justify-between items-center text-sm"
                             >
-                              <span className="text-muted-foreground">Set {set.set_number}</span>
+                              <span className="font-mono text-xs text-muted-foreground">Set {set.set_number}</span>
                               <div className="flex gap-3 items-center">
                                 {set.reps && (
                                   <div className="flex items-center gap-1">
-                                    <span className="font-semibold">{set.reps}</span>
+                                    <span className="font-mono font-medium">{set.reps}</span>
                                     <span className="text-xs text-muted-foreground">reps</span>
                                   </div>
                                 )}
                                 {set.weight && (
                                   <div className="flex items-center gap-1">
                                     <Weight className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="font-semibold">{set.weight}</span>
+                                    <span className="font-mono font-medium">{set.weight}</span>
                                     <span className="text-xs text-muted-foreground">kg</span>
                                   </div>
                                 )}
                                 {set.duration && (
                                   <div className="flex items-center gap-1">
                                     <Timer className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="font-semibold">{set.duration}</span>
+                                    <span className="font-mono font-medium">{set.duration}</span>
                                     <span className="text-xs text-muted-foreground">min</span>
                                   </div>
                                 )}
@@ -214,7 +214,7 @@ export function ProgressTab() {
                           ))}
                         </div>
                         {exercise.sets.some((s) => s.notes) && (
-                          <div className="mt-2 text-xs italic text-muted-foreground border-l-2 border-blue-500 pl-2">
+                          <div className="mt-2 text-xs italic text-muted-foreground border-l-2 border-primary/40 pl-2">
                             {exercise.sets.find((s) => s.notes)?.notes}
                           </div>
                         )}
@@ -242,7 +242,7 @@ export function ProgressTab() {
             Array.from(exerciseHistory.entries()).map(([exerciseName, history]) => (
               <Card key={exerciseName}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex justify-between items-center">
+                  <CardTitle className="font-display text-base font-normal flex justify-between items-center">
                     <span>{exerciseName}</span>
                     <Badge variant="outline" className="text-xs font-normal">
                       {history.length} {history.length === 1 ? 'entry' : 'entries'}
@@ -250,7 +250,7 @@ export function ProgressTab() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-0 divide-y dark:divide-gray-800">
+                  <div className="space-y-0 divide-y divide-border">
                     {history.slice(0, 10).map((entry, idx) => (
                       <div
                         key={idx}
@@ -274,12 +274,12 @@ export function ProgressTab() {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <div className="flex items-baseline gap-1">
-                              <span className="font-bold text-xl">{entry.weight}</span>
+                              <span className="font-mono font-semibold text-xl">{entry.weight}</span>
                               <span className="text-xs text-muted-foreground">kg</span>
                             </div>
                             {entry.reps && (
-                              <div className="text-xs text-muted-foreground">
-                                {entry.reps} reps • Set {entry.set_number}
+                              <div className="font-mono text-xs text-muted-foreground">
+                                {entry.reps} reps · Set {entry.set_number}
                               </div>
                             )}
                           </div>

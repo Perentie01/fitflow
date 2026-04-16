@@ -44,7 +44,7 @@ export function WorkoutsTab({ onNavigateToConfig }: WorkoutsTabProps) {
   if (!activeBlock || blocks.length === 0) {
     return (
       <div className="flex items-center justify-center h-[70vh]">
-        <h1 className="text-4xl font-bold text-gray-300 dark:text-gray-600">FitFlow</h1>
+        <h1 className="font-display text-4xl text-muted-foreground/40">FitFlow</h1>
       </div>
     );
   }
@@ -59,7 +59,15 @@ export function WorkoutsTab({ onNavigateToConfig }: WorkoutsTabProps) {
       {availableDays.length > 0 && (
         <div className="flex flex-wrap gap-2 px-4 pb-3 md:px-1">
           {availableDays.map((day) => (
-            <button key={day} onClick={() => setSelectedDay(day)}>
+            <button
+              key={day}
+              onClick={() => setSelectedDay(day)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                selectedDay === day
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-secondary'
+              }`}
+            >
               {day}
             </button>
           ))}
@@ -72,7 +80,7 @@ export function WorkoutsTab({ onNavigateToConfig }: WorkoutsTabProps) {
           <div className="hidden md:block space-y-4">
             {Object.entries(grouped).map(([category, categoryWorkouts]) => (
               <div key={category}>
-                <h3 className="font-semibold text-lg mb-3 flex items-center space-x-2">
+                <h3 className="font-display text-xl mb-3 flex items-center space-x-2">
                   <span>{category}</span>
                   <Badge variant="secondary" className="text-xs">
                     {categoryWorkouts.length}
@@ -91,7 +99,7 @@ export function WorkoutsTab({ onNavigateToConfig }: WorkoutsTabProps) {
           <ScrollSnapContainer>
             {Object.entries(grouped).map(([category, categoryWorkouts]) => (
               <ScrollSnapSection key={category}>
-                <h3 className="font-semibold text-2xl mb-4 flex items-center space-x-2">
+                <h3 className="font-display text-2xl mb-4 flex items-center space-x-2">
                   <span>{category}</span>
                   <Badge variant="secondary" className="text-xs">
                     {categoryWorkouts.length}

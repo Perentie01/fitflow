@@ -40,3 +40,4 @@ coverage
 # Misc
 .manus-template-version
 CLAUDE.md
+.gstack/
