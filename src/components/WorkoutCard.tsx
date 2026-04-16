@@ -117,7 +117,6 @@ export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout }: Worko
             {workout.exercise_name}
           </button>
           <div className="flex items-center space-x-2">
-            <Badge className={getCategoryColor(workout.category)}>{workout.category}</Badge>
             <Badge variant="outline" className="flex items-center space-x-1">
               {getTypeIcon()}
               <span>{workout.type}</span>
@@ -140,19 +139,20 @@ export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout }: Worko
               </>
             )}
             {workout.type === 'time' && <div>Duration: <span className="font-mono text-foreground">{workout.duration}min</span></div>}
+            {workout.type === 'cardio' && (
+              <>
+                {workout.duration != null && <div>Duration: <span className="font-mono text-foreground">{workout.duration}min</span></div>}
+                {workout.distance != null && <div>Distance: <span className="font-mono text-foreground">{workout.distance}m</span></div>}
+              </>
+            )}
             <div>Rest: <span className="font-mono text-foreground">{workout.rest}s</span></div>
           </div>
         )}
 
         {workout.guidance && (
-          <div className="p-2 bg-accent border-l-4 border-primary rounded-r-md">
-            <div className="text-xs font-medium text-accent-foreground mb-1 tracking-wide">
-              GUIDANCE
-            </div>
-            <p className="text-sm text-accent-foreground break-words">
-              {workout.guidance}
-            </p>
-          </div>
+          <p className="text-sm text-muted-foreground break-words">
+            {workout.guidance}
+          </p>
         )}
 
         {workout.cues && (

@@ -5,13 +5,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { PendingImport } from '../lib/types';
-import type { Workout } from '../lib/database';
+import type { PendingImport, WorkoutRow } from '../lib/types';
 
 interface ImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  previewData: Array<Omit<Workout, 'id'>>;
+  previewData: WorkoutRow[];
   validationErrors: string[];
   pendingImport: PendingImport | null;
   onConfirm: () => void;

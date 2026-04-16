@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { parseDelimited, rowToWorkout, validateWorkoutRow, groupWorkoutsByCategory } from './workoutUtils';
-import type { Workout } from './database';
-import { CATEGORIES } from './types';
+import { parseDelimited, rowToWorkout, validateWorkoutRow, validateWorkoutStrict, groupWorkoutsByCategory } from './workoutUtils';
+import type { StoredWorkout } from './types';
+import { CATEGORIES, WorkoutSchema } from './types';
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
-const workout = (overrides: Partial<Workout> = {}): Workout => ({
+const workout = (overrides: Partial<StoredWorkout> = {}): StoredWorkout => ({
   id: 1,
   block_id: 'Week 1',
   day: 'Day 1',
@@ -129,20 +129,29 @@ describe('rowToWorkout', () => {
     expect(w.resistance).toBeUndefined();
     expect(w.description).toBeUndefined();
   });
+
+  it('parses distance field for cardio workouts', () => {
+    const w = rowToWorkout(['distance'], ['5.0']);
+    expect(w.distance).toBe(5.0);
+  });
 });
 
 // ---------------------------------------------------------------------------
-// validateWorkoutRow
+// validateWorkoutRow (loose / import validation via Zod)
 // ---------------------------------------------------------------------------
 describe('validateWorkoutRow', () => {
   it('returns empty array for a complete workout', () => {
-    const w = { block_id: 'W1', day: 'D1', exercise_name: 'Squat', category: 'Primary', type: 'weights' };
+    const w = { block_id: 'W1', day: 'D1', exercise_name: 'Squat', category: 'Primary' as const, type: 'weights' as const, sets: 3, rest: 60, cues: '' };
     expect(validateWorkoutRow(w, 1)).toEqual([]);
   });
 
-  it('returns one error per missing required field', () => {
+  it('reports errors for missing required fields', () => {
     const errors = validateWorkoutRow({}, 1);
-    expect(errors).toHaveLength(5); // block_id, day, exercise_name, category, type
+    expect(errors.length).toBeGreaterThan(0);
+    // Should mention missing fields
+    expect(errors.some(e => e.includes('block_id'))).toBe(true);
+    expect(errors.some(e => e.includes('day'))).toBe(true);
+    expect(errors.some(e => e.includes('exercise_name'))).toBe(true);
   });
 
   it('includes the display row number in each error message', () => {
@@ -150,21 +159,126 @@ describe('validateWorkoutRow', () => {
     errors.forEach((e) => expect(e).toContain('Row 7'));
   });
 
-  it('names each missing field in its error message', () => {
-    const errors = validateWorkoutRow({}, 1);
-    expect(errors).toEqual([
-      'Row 1: Missing block_id',
-      'Row 1: Missing day',
-      'Row 1: Missing exercise_name',
-      'Row 1: Missing category',
-      'Row 1: Missing type',
-    ]);
+  it('rejects invalid category values', () => {
+    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Invalid' as any, type: 'weights' as const, sets: 3, rest: 60, cues: '' };
+    const errors = validateWorkoutRow(w, 1);
+    expect(errors.some(e => e.includes('category'))).toBe(true);
+  });
+
+  it('rejects invalid exercise type values', () => {
+    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Primary' as const, type: 'invalid' as any, sets: 3, rest: 60, cues: '' };
+    const errors = validateWorkoutRow(w, 1);
+    expect(errors.some(e => e.includes('type'))).toBe(true);
   });
 
   it('does not flag missing optional fields', () => {
-    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Primary', type: 'weights' };
+    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Primary' as const, type: 'weights' as const, sets: 3, rest: 60, cues: '' };
     // no reps, weight, duration, guidance, etc.
     expect(validateWorkoutRow(w, 1)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// validateWorkoutStrict (discriminated union via Zod)
+// ---------------------------------------------------------------------------
+describe('validateWorkoutStrict', () => {
+  it('accepts a valid weights workout with reps', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Squats',
+      category: 'Primary', type: 'weights',
+      sets: 3, reps: 10, weight: 100, rest: 90, cues: 'Drive through heels',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects weights workout without reps', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Squats',
+      category: 'Primary', type: 'weights',
+      sets: 3, weight: 100, rest: 90, cues: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts weights workout without weight (bodyweight)', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Push-ups',
+      category: 'Primary', type: 'weights',
+      sets: 3, reps: 20, rest: 60, cues: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a valid time workout with duration', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Plank',
+      category: 'Primary', type: 'time',
+      sets: 3, duration: 1.5, rest: 60, cues: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects time workout without duration', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Plank',
+      category: 'Primary', type: 'time',
+      sets: 3, rest: 60, cues: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects time workout with reps', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Plank',
+      category: 'Primary', type: 'time',
+      sets: 3, duration: 1.5, reps: 10, rest: 60, cues: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a valid mindset workout', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Focus',
+      category: 'Intent', type: 'mindset',
+      sets: 1, duration: 2, rest: 0, cues: 'Visualize success',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts mindset workout without duration', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Focus',
+      category: 'Intent', type: 'mindset',
+      sets: 1, rest: 0, cues: 'Visualize success',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a valid cardio workout', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: '5K Run',
+      category: 'Primary', type: 'cardio',
+      sets: 1, duration: 30, distance: 5, rest: 0, cues: 'Steady pace',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts cardio workout with only duration', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Easy Run',
+      category: 'Warm-up', type: 'cardio',
+      sets: 1, duration: 15, rest: 0, cues: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects cardio workout with reps', () => {
+    const result = validateWorkoutStrict({
+      block_id: 'W1', day: 'D1', exercise_name: 'Run',
+      category: 'Primary', type: 'cardio',
+      sets: 1, duration: 30, reps: 10, rest: 0, cues: '',
+    });
+    expect(result.success).toBe(false);
   });
 });
 

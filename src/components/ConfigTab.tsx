@@ -8,12 +8,12 @@ import { TestDataButton } from './TestDataButton';
 import { ImportDialog } from './ImportDialog';
 import { useBlock } from '../context/BlockContext';
 import { dbHelpers } from '../lib/database';
-import type { Workout } from '../lib/database';
 import {
   APP_VERSION,
   AI_COPY_TEMPLATE,
   EXPORT_HEADERS,
   type PendingImport,
+  type WorkoutRow,
 } from '../lib/types';
 import { parseDelimited, rowToWorkout, validateWorkoutRow } from '../lib/workoutUtils';
 
@@ -24,7 +24,7 @@ export function ConfigTab() {
   const [showExportSuccess, setShowExportSuccess] = useToggle(false);
   const [showCopySuccess, setShowCopySuccess] = useToggle(false);
   const [validationDialogOpen, setValidationDialogOpen] = useToggle(false);
-  const [previewData, setPreviewData] = useState<Array<Omit<Workout, 'id'>>>([]);
+  const [previewData, setPreviewData] = useState<WorkoutRow[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
 
@@ -37,7 +37,7 @@ export function ConfigTab() {
       const text = await file.text();
       const { headers, rows } = parseDelimited(text);
       const errors: string[] = [];
-      const workoutData: Array<Omit<Workout, 'id'>> = [];
+      const workoutData: WorkoutRow[] = [];
       const blockIds = new Set<string>();
 
       rows.forEach((values, i) => {

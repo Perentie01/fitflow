@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 // Shared constants
 export const APP_VERSION = 'v1.2.0';
 
@@ -10,7 +12,131 @@ export const CATEGORIES = [
   'Cool-down',
 ] as const;
 
-export type Category = (typeof CATEGORIES)[number];
+export const CategorySchema = z.enum(CATEGORIES);
+export type Category = z.infer<typeof CategorySchema>;
+
+export const EXERCISE_TYPES = ['weights', 'time', 'mindset', 'cardio'] as const;
+
+export const ExerciseTypeSchema = z.enum(EXERCISE_TYPES);
+export type ExerciseType = z.infer<typeof ExerciseTypeSchema>;
+
+// Base fields shared by all workout types
+export const WorkoutBase = z.object({
+  id: z.number().optional(),
+  block_id: z.string().min(1),
+  day: z.string().min(1),
+  exercise_name: z.string().min(1),
+  category: CategorySchema,
+  sets: z.number().int().positive().default(1),
+  rest: z.number().int().nonnegative().default(0),
+  cues: z.string().default(''),
+  guidance: z.string().optional(),
+  resistance: z.string().optional(),
+  description: z.string().optional(),
+});
+
+// Weights: reps required, weight optional (bodyweight exercises), no duration
+const WeightsWorkout = WorkoutBase.extend({
+  type: z.literal('weights'),
+  reps: z.number().int().positive(),
+  weight: z.number().nonnegative().optional(),
+  duration: z.undefined().optional(),
+});
+
+// Time: duration required, no reps/weight
+const TimeWorkout = WorkoutBase.extend({
+  type: z.literal('time'),
+  duration: z.number().positive(),
+  reps: z.undefined().optional(),
+  weight: z.undefined().optional(),
+});
+
+// Mindset: duration optional (mental cue length), no reps/weight
+const MindsetWorkout = WorkoutBase.extend({
+  type: z.literal('mindset'),
+  duration: z.number().positive().optional(),
+  reps: z.undefined().optional(),
+  weight: z.undefined().optional(),
+});
+
+// Cardio: duration and/or distance, no reps/weight
+const CardioWorkout = WorkoutBase.extend({
+  type: z.literal('cardio'),
+  duration: z.number().positive().optional(),
+  distance: z.number().positive().optional(),
+  reps: z.undefined().optional(),
+  weight: z.undefined().optional(),
+});
+
+export const WorkoutSchema = z.discriminatedUnion('type', [
+  WeightsWorkout,
+  TimeWorkout,
+  MindsetWorkout,
+  CardioWorkout,
+]);
+
+export type Workout = z.infer<typeof WorkoutSchema>;
+
+// Loose schema for import validation — requires core identity fields,
+// but does not enforce discriminated-union rules per type.
+export const WorkoutRowSchema = WorkoutBase.extend({
+  type: ExerciseTypeSchema,
+  reps: z.number().int().positive().optional(),
+  weight: z.number().nonnegative().optional(),
+  duration: z.number().positive().optional(),
+  distance: z.number().positive().optional(),
+});
+
+export type WorkoutRow = z.infer<typeof WorkoutRowSchema>;
+
+// Flattened type for database storage — all type-specific fields optional.
+// Dexie returns plain objects, so we can't narrow on discriminated unions at read time.
+export type StoredWorkout = z.infer<typeof WorkoutBase> & {
+  type: ExerciseType;
+  reps?: number;
+  weight?: number;
+  duration?: number;
+  distance?: number;
+};
+
+// Progress tracking
+export const ProgressSchema = z.object({
+  id: z.number().optional(),
+  workout_id: z.number(),
+  set_number: z.number().int().positive(),
+  completed_reps: z.number().int().nonnegative().optional(),
+  completed_weight: z.number().nonnegative().optional(),
+  completed_duration: z.number().nonnegative().optional(),
+  completed_at: z.date(),
+  notes: z.string().optional(),
+});
+
+export type Progress = z.infer<typeof ProgressSchema>;
+
+// Block
+export const BlockSchema = z.object({
+  id: z.number().optional(),
+  block_id: z.string().min(1),
+  block_name: z.string().min(1),
+  is_active: z.number(),
+  created_at: z.date(),
+});
+
+export type Block = z.infer<typeof BlockSchema>;
+
+// Set progress (used in UI state, not persisted directly)
+export interface SetProgress {
+  set_number: number;
+  completed_reps?: number;
+  completed_weight?: number;
+  completed_duration?: number;
+  notes?: string;
+}
+
+export interface PendingImport {
+  workoutData: Array<WorkoutRow>;
+  blockIds: Set<string>;
+}
 
 export const EXPORT_HEADERS = [
   'block_id',
@@ -22,6 +148,7 @@ export const EXPORT_HEADERS = [
   'reps',
   'weight',
   'duration',
+  'distance',
   'rest',
   'cues',
   'guidance',
@@ -35,18 +162,4 @@ export const EXPORT_HEADERS = [
   'notes',
 ] as const;
 
-export const AI_COPY_TEMPLATE = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nUse description for detailed exercise setup and execution (e.g., "Stand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.").\n\nExample format (columns separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\tStand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.\nWeek 1\\tDay 1\\tBand Pull\\tAdditional\\tweights\\t3\\t15\\t\\t\\t60\\tControl the movement, squeeze at the top\\t\\tRed band\\t`;
-
-// Shared interfaces
-export interface SetProgress {
-  set_number: number;
-  completed_reps?: number;
-  completed_weight?: number;
-  completed_duration?: number;
-  notes?: string;
-}
-
-export interface PendingImport {
-  workoutData: Array<Record<string, unknown>>;
-  blockIds: Set<string>;
-}
+export const AI_COPY_TEMPLATE = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nRequired columns: block_id, day, exercise_name, category, type, sets, rest, cues\nOptional columns: reps, weight, duration, distance, guidance, resistance, description\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset, cardio\n\nType-specific fields:\n- weights: reps (required), weight (optional for bodyweight)\n- time: duration (required, in minutes)\n- mindset: duration (optional, in minutes)\n- cardio: duration and/or distance (in metres)\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for instructions like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nUse description for detailed exercise setup and execution (e.g., "Stand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.").\n\nExample format (columns separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\tStand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.\nWeek 1\\tDay 1\\tBand Pull\\tAdditional\\tweights\\t3\\t15\\t\\t\\t60\\tControl the movement, squeeze at the top\\t\\tRed band\\t\nWeek 1\\tDay 1\\t5K Run\\tPrimary\\tcardio\\t1\\t\\t\\t30\\t0\\tMaintain steady pace, breathe rhythmically\\t\\t\\t`;
