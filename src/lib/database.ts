@@ -1,41 +1,10 @@
 import Dexie from 'dexie';
+import type { StoredWorkout, WorkoutRow, Progress, Block } from './types';
 
-export interface Workout {
-  id?: number;
-  block_id: string;
-  day: string;
-  exercise_name: string;
-  category: 'Warm-up' | 'Primary' | 'Secondary' | 'Additional' | 'Cool-down' | 'Intent';
-  type: 'weights' | 'time' | 'mindset';
-  sets: number;
-  reps?: number;
-  weight?: number;
-  duration?: number;
-  rest: number;
-  cues: string;
-  guidance?: string;      // Instructions like "70% 1RM", "per side", etc.
-  resistance?: string;    // For non-weight exercises: "Red band", "Heavy", etc.
-  description?: string;   // Detailed exercise description
-}
-
-export interface Progress {
-  id?: number;
-  workout_id: number;
-  set_number: number;
-  completed_reps?: number;
-  completed_weight?: number;
-  completed_duration?: number;
-  completed_at: Date;
-  notes?: string;
-}
-
-export interface Block {
-  id?: number;
-  block_id: string;
-  block_name: string;
-  is_active: number;
-  created_at: Date;
-}
+// Dexie returns plain objects so we use the flattened StoredWorkout type.
+// Use WorkoutSchema for strict discriminated-union validation at import time.
+export type Workout = StoredWorkout;
+export type { Progress, Block };
 
 // Define the database schema
 export class FitFlowDatabase extends Dexie {
@@ -113,8 +82,8 @@ export const dbHelpers = {
   },
 
   // Workout operations
-  async importWorkouts(workouts: Omit<Workout, 'id'>[]): Promise<string> {
-    return await db.workouts.bulkAdd(workouts);
+  async importWorkouts(workouts: WorkoutRow[]): Promise<number> {
+    return await db.workouts.bulkAdd(workouts as Omit<Workout, 'id'>[]);
   },
 
   async getWorkoutsByBlock(blockId: string): Promise<Workout[]> {

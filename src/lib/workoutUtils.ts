@@ -1,8 +1,9 @@
-import type { Workout } from './database';
-import { CATEGORIES } from './types';
+import { z } from 'zod';
+import type { StoredWorkout, WorkoutRow, Workout } from './types';
+import { CATEGORIES, WorkoutRowSchema, WorkoutSchema } from './types';
 
 /** Group an array of workouts into a category-keyed object, preserving CATEGORIES order. */
-export function groupWorkoutsByCategory(workouts: Workout[]): Record<string, Workout[]> {
+export function groupWorkoutsByCategory(workouts: StoredWorkout[]): Record<string, StoredWorkout[]> {
   return CATEGORIES.reduce(
     (acc, category) => {
       const categoryWorkouts = workouts.filter((w) => w.category === category);
@@ -11,7 +12,7 @@ export function groupWorkoutsByCategory(workouts: Workout[]): Record<string, Wor
       }
       return acc;
     },
-    {} as Record<string, Workout[]>,
+    {} as Record<string, StoredWorkout[]>,
   );
 }
 
@@ -43,8 +44,8 @@ export function parseDelimited(text: string): { headers: string[]; rows: string[
   return { headers, rows };
 }
 
-/** Map a header/value pair into a typed workout object. */
-export function rowToWorkout(headers: string[], values: string[]): Omit<Workout, 'id'> {
+/** Map a header/value pair into a loosely-typed workout row object. */
+export function rowToWorkout(headers: string[], values: string[]): WorkoutRow {
   const workout: Record<string, unknown> = {};
 
   headers.forEach((header, index) => {
@@ -80,6 +81,9 @@ export function rowToWorkout(headers: string[], values: string[]): Omit<Workout,
       case 'duration':
         workout.duration = value ? parseFloat(value) : undefined;
         break;
+      case 'distance':
+        workout.distance = value ? parseFloat(value) : undefined;
+        break;
       case 'rest':
         workout.rest = parseInt(value) || 0;
         break;
@@ -98,16 +102,27 @@ export function rowToWorkout(headers: string[], values: string[]): Omit<Workout,
     }
   });
 
-  return workout as Omit<Workout, 'id'>;
+  return workout as WorkoutRow;
 }
 
 /** Return validation error strings for a workout row (1-indexed display row). */
-export function validateWorkoutRow(workout: Partial<Workout>, displayRow: number): string[] {
-  const errors: string[] = [];
-  if (!workout.block_id)      errors.push(`Row ${displayRow}: Missing block_id`);
-  if (!workout.day)           errors.push(`Row ${displayRow}: Missing day`);
-  if (!workout.exercise_name) errors.push(`Row ${displayRow}: Missing exercise_name`);
-  if (!workout.category)      errors.push(`Row ${displayRow}: Missing category`);
-  if (!workout.type)          errors.push(`Row ${displayRow}: Missing type`);
-  return errors;
+export function validateWorkoutRow(workout: Partial<WorkoutRow>, displayRow: number): string[] {
+  const result = WorkoutRowSchema.safeParse(workout);
+  if (result.success) return [];
+
+  return result.error.issues.map((issue) => {
+    const field = issue.path.join('.');
+    if (issue.code === z.ZodIssueCode.invalid_type && issue.received === 'undefined') {
+      return `Row ${displayRow}: Missing ${field}`;
+    }
+    return `Row ${displayRow}: ${field} — ${issue.message}`;
+  });
+}
+
+/**
+ * Validate a workout row against the strict discriminated union schema.
+ * Returns typed errors for type-specific field requirements (e.g. reps for weights).
+ */
+export function validateWorkoutStrict(workout: unknown): z.SafeParseReturnType<unknown, Workout> {
+  return WorkoutSchema.safeParse(workout);
 }
