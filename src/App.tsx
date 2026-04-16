@@ -6,6 +6,7 @@ import { ConfigTab } from './components/ConfigTab';
 import { ProgressTab } from './components/ProgressTab';
 import { BlockProvider, useBlock } from './context/BlockContext';
 import { AuthProvider } from './context/AuthContext';
+import { AuthGate } from './components/AuthGate';
 import { useSync } from './hooks/useSync';
 import './App.css';
 
@@ -16,6 +17,9 @@ function AppContent() {
   const { reloadBlocks } = useBlock();
 
   useSync(() => reloadBlocks());
+
+  const { reloadBlocks } = useBlock();
+  useSync(reloadBlocks);
 
   const handleCompactModeChange = (compact: boolean) => {
     setCompactMode(compact);
@@ -61,7 +65,9 @@ function App() {
   return (
     <AuthProvider>
       <BlockProvider>
-        <AppContent />
+        <AuthGate>
+          <AppContent />
+        </AuthGate>
       </BlockProvider>
     </AuthProvider>
   );
