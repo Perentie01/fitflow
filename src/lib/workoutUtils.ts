@@ -99,7 +99,7 @@ export function rowToWorkout(headers: string[], values: string[]): WorkoutRow {
         workout.resistance = value || undefined;
         break;
       case 'description':
-        workout.description = value || undefined;
+        workout.description = value ? value.replace(/\\n/g, '\n') : undefined;
         break;
     }
   });
@@ -115,6 +115,9 @@ export function validateWorkoutRow(workout: Partial<WorkoutRow>, displayRow: num
   return result.error.issues.map((issue) => {
     const field = issue.path.join('.');
     if (issue.code === z.ZodIssueCode.invalid_type && issue.received === 'undefined') {
+      return `Row ${displayRow}: Missing ${field}`;
+    }
+    if (issue.code === z.ZodIssueCode.too_small && issue.minimum === 1 && issue.type === 'string') {
       return `Row ${displayRow}: Missing ${field}`;
     }
     return `Row ${displayRow}: ${field} — ${issue.message}`;

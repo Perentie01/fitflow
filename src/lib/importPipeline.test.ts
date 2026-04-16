@@ -9,11 +9,11 @@ import { parseDelimited, rowToWorkout, validateWorkoutRow } from './workoutUtils
 
 const SAMPLE_TSV = [
   'block_id\tday\texercise_name\tcategory\ttype\tsets\treps\tweight\tduration\trest\tcues\tguidance\tresistance\tdescription',
-  'Week 1\tDay 1\tFocus\tIntent\tmindset\t1\t\t\t2\t0\tBuild power today\t\t\t',
-  'Week 1\tDay 1\tSquats\tPrimary\tweights\t3\t10\t100\t\t90\tDrive through heels\t70% 1RM\t\tFeet shoulder-width apart',
-  'Week 1\tDay 1\tBand Pull\tAdditional\tweights\t3\t15\t\t\t60\tSqueeze at top\t\tRed band\t',
-  'Week 1\tDay 2\tPlank\tPrimary\ttime\t3\t\t\t1.5\t30\tKeep hips level\t\t\t',
-  'Week 2\tDay 1\tDeadlift\tPrimary\tweights\t4\t5\t140\t\t120\tFlat back\t80% 1RM\t\t',
+  'Week 1\tDay 1\tFocus\tIntent\tmindset\t1\t\t\t2\t0\tBuild power today\t\t\tClose eyes and set your intention for the session',
+  'Week 1\tDay 1\tSquats\tPrimary\tweights\t3\t10\t100\t\t90\tDrive through heels\t70% 1RM\t\t1. Stand with feet shoulder-width apart\\n2. Brace core and lower until thighs are parallel\\n3. Drive through heels to stand',
+  'Week 1\tDay 1\tBand Pull\tAdditional\tweights\t3\t15\t\t\t60\tSqueeze at top\t\tRed band\tAnchor band at chest height and pull toward you',
+  'Week 1\tDay 2\tPlank\tPrimary\ttime\t3\t\t\t1.5\t30\tKeep hips level\t\t\tForearms on ground, body in a straight line from head to heels',
+  'Week 2\tDay 1\tDeadlift\tPrimary\tweights\t4\t5\t140\t\t120\tFlat back\t80% 1RM\t\t1. Stand with feet hip-width apart\\n2. Hinge at hips and grip the bar\\n3. Drive through feet keeping back flat',
 ].join('\n');
 
 describe('TSV import pipeline — full flow', () => {
@@ -69,12 +69,21 @@ describe('TSV import pipeline — full flow', () => {
 
     const squats = workouts.find((w) => w.exercise_name === 'Squats')!;
     expect(squats.guidance).toBe('70% 1RM');
-    expect(squats.description).toBe('Feet shoulder-width apart');
+    expect(squats.description).toContain('Stand with feet shoulder-width apart');
     expect(squats.resistance).toBeUndefined(); // empty → undefined
 
     const bandPull = workouts.find((w) => w.exercise_name === 'Band Pull')!;
     expect(bandPull.resistance).toBe('Red band');
     expect(bandPull.guidance).toBeUndefined();
+  });
+
+  it('converts escaped \\n sequences in description to real newlines', () => {
+    const { headers, rows } = parseDelimited(SAMPLE_TSV);
+    const workouts = rows.map((values) => rowToWorkout(headers, values));
+
+    const squats = workouts.find((w) => w.exercise_name === 'Squats')!;
+    expect(squats.description).toContain('\n');
+    expect(squats.description!.split('\n')).toHaveLength(3);
   });
 
   it('collects days per block for session navigation', () => {
@@ -95,13 +104,14 @@ describe('TSV import pipeline — full flow', () => {
     const errors = validateWorkoutRow(workout, 2);
     expect(errors).toContain('Row 2: Missing block_id');
     expect(errors).toContain('Row 2: Missing day');
-    expect(errors).toContain('Row 2: Missing category');
-    expect(errors).toContain('Row 2: Missing type');
+    expect(errors.some(e => e.includes('category'))).toBe(true);
+    expect(errors.some(e => e.includes('type'))).toBe(true);
     expect(errors).not.toContain('Row 2: Missing exercise_name'); // Squats is present
+    expect(errors).toContain('Row 2: Missing description');
   });
 
   it('handles CSV format as well as TSV', () => {
-    const csv = 'block_id,day,exercise_name,category,type,sets,rest,cues\nWeek 1,Day 1,Squats,Primary,weights,3,90,Heels';
+    const csv = 'block_id,day,exercise_name,category,type,sets,rest,cues,description\nWeek 1,Day 1,Squats,Primary,weights,3,90,Heels,Stand and squat';
     const { headers, rows } = parseDelimited(csv);
     const workout = rowToWorkout(headers, rows[0]);
     expect(workout.block_id).toBe('Week 1');

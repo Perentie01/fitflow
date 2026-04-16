@@ -15,7 +15,7 @@ export class FitFlowDatabase extends Dexie {
   constructor() {
     super('FitFlowDatabase');
     
-    // Version 3: Add guidance, resistance, description fields
+    // Version 3: Add guidance, resistance, description (exercise setup/execution instructions) fields
     this.version(3).stores({
       workouts: '++id, block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues, guidance, resistance, description',
       progress: '++id, workout_id, set_number, completed_reps, completed_weight, completed_duration, completed_at, notes',

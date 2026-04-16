@@ -122,12 +122,17 @@ describe('rowToWorkout', () => {
     expect(w.description).toBe('Stand tall');
   });
 
-  it('returns undefined for optional text fields when empty', () => {
-    const h = ['guidance', 'resistance', 'description'];
-    const w = rowToWorkout(h, ['', '', '']);
+  it('returns undefined for empty optional text fields guidance and resistance', () => {
+    const h = ['guidance', 'resistance'];
+    const w = rowToWorkout(h, ['', '']);
     expect(w.guidance).toBeUndefined();
     expect(w.resistance).toBeUndefined();
-    expect(w.description).toBeUndefined();
+  });
+
+  it('converts escaped \\n in description to real newlines', () => {
+    const h = ['description'];
+    const w = rowToWorkout(h, ['Step 1\\nStep 2\\nStep 3']);
+    expect(w.description).toBe('Step 1\nStep 2\nStep 3');
   });
 
   it('parses distance field for cardio workouts', () => {
@@ -141,7 +146,7 @@ describe('rowToWorkout', () => {
 // ---------------------------------------------------------------------------
 describe('validateWorkoutRow', () => {
   it('returns empty array for a complete workout', () => {
-    const w = { block_id: 'W1', day: 'D1', exercise_name: 'Squat', category: 'Primary' as const, type: 'weights' as const, sets: 3, rest: 60, cues: '' };
+    const w = { block_id: 'W1', day: 'D1', exercise_name: 'Squat', category: 'Primary' as const, type: 'weights' as const, sets: 3, rest: 60, cues: '', description: 'Stand and squat' };
     expect(validateWorkoutRow(w, 1)).toEqual([]);
   });
 
@@ -160,19 +165,19 @@ describe('validateWorkoutRow', () => {
   });
 
   it('rejects invalid category values', () => {
-    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Invalid' as any, type: 'weights' as const, sets: 3, rest: 60, cues: '' };
+    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Invalid' as any, type: 'weights' as const, sets: 3, rest: 60, cues: '', description: 'Do the exercise' };
     const errors = validateWorkoutRow(w, 1);
     expect(errors.some(e => e.includes('category'))).toBe(true);
   });
 
   it('rejects invalid exercise type values', () => {
-    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Primary' as const, type: 'invalid' as any, sets: 3, rest: 60, cues: '' };
+    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Primary' as const, type: 'invalid' as any, sets: 3, rest: 60, cues: '', description: 'Do the exercise' };
     const errors = validateWorkoutRow(w, 1);
     expect(errors.some(e => e.includes('type'))).toBe(true);
   });
 
   it('does not flag missing optional fields', () => {
-    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Primary' as const, type: 'weights' as const, sets: 3, rest: 60, cues: '' };
+    const w = { block_id: 'W1', day: 'D1', exercise_name: 'X', category: 'Primary' as const, type: 'weights' as const, sets: 3, rest: 60, cues: '', description: 'Do the exercise' };
     // no reps, weight, duration, guidance, etc.
     expect(validateWorkoutRow(w, 1)).toEqual([]);
   });
@@ -187,6 +192,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Squats',
       category: 'Primary', type: 'weights',
       sets: 3, reps: 10, weight: 100, rest: 90, cues: 'Drive through heels',
+      description: 'Stand with feet shoulder-width apart and squat',
     });
     expect(result.success).toBe(true);
   });
@@ -196,6 +202,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Squats',
       category: 'Primary', type: 'weights',
       sets: 3, weight: 100, rest: 90, cues: '',
+      description: 'Stand with feet shoulder-width apart and squat',
     });
     expect(result.success).toBe(false);
   });
@@ -205,6 +212,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Push-ups',
       category: 'Primary', type: 'weights',
       sets: 3, reps: 20, rest: 60, cues: '',
+      description: 'Hands shoulder-width apart, lower chest to ground',
     });
     expect(result.success).toBe(true);
   });
@@ -214,6 +222,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Plank',
       category: 'Primary', type: 'time',
       sets: 3, duration: 1.5, rest: 60, cues: '',
+      description: 'Forearms on ground, body in a straight line',
     });
     expect(result.success).toBe(true);
   });
@@ -223,6 +232,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Plank',
       category: 'Primary', type: 'time',
       sets: 3, rest: 60, cues: '',
+      description: 'Forearms on ground, body in a straight line',
     });
     expect(result.success).toBe(false);
   });
@@ -232,6 +242,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Plank',
       category: 'Primary', type: 'time',
       sets: 3, duration: 1.5, reps: 10, rest: 60, cues: '',
+      description: 'Forearms on ground, body in a straight line',
     });
     expect(result.success).toBe(false);
   });
@@ -241,6 +252,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Focus',
       category: 'Intent', type: 'mindset',
       sets: 1, duration: 2, rest: 0, cues: 'Visualize success',
+      description: 'Close eyes and focus on breathing',
     });
     expect(result.success).toBe(true);
   });
@@ -250,6 +262,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Focus',
       category: 'Intent', type: 'mindset',
       sets: 1, rest: 0, cues: 'Visualize success',
+      description: 'Close eyes and focus on breathing',
     });
     expect(result.success).toBe(true);
   });
@@ -259,6 +272,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: '5K Run',
       category: 'Primary', type: 'cardio',
       sets: 1, duration: 30, distance: 5, rest: 0, cues: 'Steady pace',
+      description: 'Warm up for 5 minutes then maintain steady pace',
     });
     expect(result.success).toBe(true);
   });
@@ -268,6 +282,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Easy Run',
       category: 'Warm-up', type: 'cardio',
       sets: 1, duration: 15, rest: 0, cues: '',
+      description: 'Easy conversational pace run',
     });
     expect(result.success).toBe(true);
   });
@@ -277,6 +292,7 @@ describe('validateWorkoutStrict', () => {
       block_id: 'W1', day: 'D1', exercise_name: 'Run',
       category: 'Primary', type: 'cardio',
       sets: 1, duration: 30, reps: 10, rest: 0, cues: '',
+      description: 'Run at moderate pace',
     });
     expect(result.success).toBe(false);
   });

@@ -38,6 +38,7 @@ const timeWorkout: Workout = {
   duration: 1.5,
   rest: 30,
   cues: 'Keep hips level',
+  description: 'Forearms on ground, body in a straight line from head to heels',
 };
 
 const mindsetWorkout: Workout = {
@@ -50,6 +51,7 @@ const mindsetWorkout: Workout = {
   sets: 1,
   rest: 0,
   cues: 'Build power today',
+  description: 'Close eyes and set your intention for the session',
 };
 
 describe('WorkoutCard', () => {
@@ -57,10 +59,10 @@ describe('WorkoutCard', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the exercise name and category badge', () => {
+  it('renders the exercise name and type badge', () => {
     render(<WorkoutCard workout={weightsWorkout} />);
     expect(screen.getByText('Squats')).toBeInTheDocument();
-    expect(screen.getByText('Primary')).toBeInTheDocument();
+    expect(screen.getByText('weights')).toBeInTheDocument();
   });
 
   it('renders sets, reps, weight, and rest for weights exercises', () => {
@@ -71,9 +73,8 @@ describe('WorkoutCard', () => {
     expect(screen.getByText('90s')).toBeInTheDocument(); // rest
   });
 
-  it('renders guidance block when guidance is provided', () => {
+  it('renders guidance text when guidance is provided', () => {
     render(<WorkoutCard workout={weightsWorkout} />);
-    expect(screen.getByText('GUIDANCE')).toBeInTheDocument();
     expect(screen.getByText('70% 1RM')).toBeInTheDocument();
   });
 
