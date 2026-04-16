@@ -2,6 +2,26 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from '../App';
 
+// Mock Supabase to avoid env var requirements in tests
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+      signInWithOAuth: vi.fn(),
+      signOut: vi.fn(),
+    },
+    from: vi.fn().mockReturnValue({
+      upsert: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }),
+      }),
+    }),
+  },
+}));
+
 // Mock database to avoid IndexedDB in jsdom
 vi.mock('../lib/database', () => ({
   db: {
