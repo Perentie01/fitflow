@@ -5,6 +5,7 @@ import { WorkoutsTab } from './components/WorkoutsTab';
 import { ConfigTab } from './components/ConfigTab';
 import { ProgressTab } from './components/ProgressTab';
 import { BlockProvider } from './context/BlockContext';
+import { AuthProvider } from './context/AuthContext';
 import './App.css';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
   };
 
   return (
+    <AuthProvider>
     <BlockProvider>
       <div className="h-dvh flex flex-col bg-background transition-colors overflow-hidden">
         {!(compactMode && activeTab === 'workouts') && <Header />}
@@ -51,6 +53,7 @@ function App() {
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </BlockProvider>
+    </AuthProvider>
   );
 }
 
