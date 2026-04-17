@@ -6,9 +6,10 @@ import App from '../App';
 vi.mock('../lib/supabase', () => ({
   supabase: {
     auth: {
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user', email: 'test@example.com' } } } }),
       onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
-      signInWithOAuth: vi.fn(),
+      signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
+      signUp: vi.fn().mockResolvedValue({ error: null }),
       signOut: vi.fn(),
     },
     from: vi.fn().mockReturnValue({
