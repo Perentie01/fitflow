@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -5,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Copy, Check } from 'lucide-react';
 import type { PendingImport, WorkoutRow } from '../lib/types';
 
 interface ImportDialogProps {
@@ -26,6 +28,14 @@ export function ImportDialog({
   onConfirm,
   onCancel,
 }: ImportDialogProps) {
+  const [errorsCopied, setErrorsCopied] = useState(false);
+
+  const copyErrors = () => {
+    navigator.clipboard.writeText(validationErrors.join('\n'));
+    setErrorsCopied(true);
+    setTimeout(() => setErrorsCopied(false), 2000);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -36,7 +46,21 @@ export function ImportDialog({
         <div className="space-y-4">
           {validationErrors.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <h3 className="font-semibold text-red-800 mb-2">⚠️ Validation Errors</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-red-800">⚠️ Validation Errors</h3>
+                <Button
+                  onClick={copyErrors}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  {errorsCopied ? (
+                    <><Check className="h-3 w-3 mr-1" />Copied</>
+                  ) : (
+                    <><Copy className="h-3 w-3 mr-1" />Copy errors</>
+                  )}
+                </Button>
+              </div>
               <ul className="text-sm text-red-700 space-y-1">
                 {validationErrors.slice(0, 10).map((error, index) => (
                   <li key={index}>• {error}</li>

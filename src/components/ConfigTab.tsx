@@ -255,21 +255,21 @@ export function ConfigTab() {
               Copy instructions + example for AI tools (ChatGPT, Claude, etc.):
             </p>
             <div className="bg-muted p-3 rounded text-xs space-y-2">
-              <p><strong>Required fields:</strong> block_id, day, exercise_name, category, type, sets, rest, cues</p>
-              <p><strong>Optional fields:</strong> reps, weight, duration, guidance, resistance, description</p>
+              <p><strong>Column order (15 columns, all rows must include all columns):</strong></p>
+              <p className="font-mono">block_id · day · exercise_name · category · type · sets · reps · weight · duration · distance · rest · cues · guidance · resistance · description</p>
+              <p><strong>Required:</strong> block_id, day, exercise_name, category, type, sets</p>
+              <p><strong>Type-specific:</strong> reps (weights), duration (time/mindset), distance (cardio)</p>
+              <p><strong>Optional:</strong> weight, guidance, resistance, description</p>
               <p><strong>Categories:</strong> Intent, Warm-up, Primary, Secondary, Additional, Cool-down</p>
-              <p><strong>Types:</strong> weights, time, mindset</p>
-              <p><strong>Intent exercises:</strong> Use category=Intent, type=mindset for mental prep</p>
-              <p><strong>Guidance:</strong> Instructions like "70% 1RM" or "per side"</p>
-              <p><strong>Resistance:</strong> For non-weight exercises like "Red band"</p>
-              <p><strong>Description:</strong> Detailed exercise setup and execution</p>
+              <p><strong>Types:</strong> weights, time, mindset, cardio</p>
+              <p><strong>Description:</strong> Step-by-step setup and execution (recommended for weights/time)</p>
             </div>
           </div>
           <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
-            {`block_id\tday\texercise_name\tcategory\ttype\tsets\treps\tweight\tduration\trest\tcues\tguidance\tresistance\tdescription
-Week 1\tDay 1\tFocus\tIntent\tmindset\t1\t\t\t2\t0\tToday's goal: build power, focus on explosive movement
-Week 1\tDay 1\tSquats\tPrimary\tweights\t3\t10\t100\t\t90\tKeep chest up, drive through heels\t70% 1RM\t\tStand with feet shoulder-width apart, toes slightly out. Lower until thighs parallel to ground, keeping chest up. Drive through heels to return to standing.
-Week 1\tDay 1\tBand Pull\tAdditional\tweights\t3\t15\t\t\t60\tControl the movement, squeeze at the top\t\tRed band\t`}
+            {`block_id\tday\texercise_name\tcategory\ttype\tsets\treps\tweight\tduration\tdistance\trest\tcues\tguidance\tresistance\tdescription
+Week 1\tDay 1\tFocus\tIntent\tmindset\t1\t\t\t2\t\t0\tToday's goal: build power, focus on explosive movement\t\t\t
+Week 1\tDay 1\tSquats\tPrimary\tweights\t3\t10\t100\t\t\t90\tKeep chest up, drive through heels\t70% 1RM\t\t1. Stand feet shoulder-width apart.\n2. Lower until thighs parallel.\n3. Drive through heels to stand.
+Week 1\tDay 1\tBand Pull\tAdditional\tweights\t3\t15\t\t\t\t60\tControl the movement, squeeze at the top\t\tRed band\t`}
           </pre>
           <Popover open={showCopySuccess}>
             <PopoverTrigger asChild>
