@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FitFlow">
+  <!-- Background: near-black rounded square -->
+  <rect width="512" height="512" rx="80" fill="#111110"/>
+  <!-- Geometric F — amber accent, centred 280×280 mark with 116px inset -->
+  <!-- Vertical stem -->
+  <rect x="116" y="116" width="44" height="280" fill="#C4925A"/>
+  <!-- Top horizontal bar -->
+  <rect x="116" y="116" width="280" height="44" fill="#C4925A"/>
+  <!-- Mid horizontal bar -->
+  <rect x="116" y="240" width="210" height="44" fill="#C4925A"/>
+</svg>
