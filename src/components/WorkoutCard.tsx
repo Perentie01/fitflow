@@ -109,8 +109,8 @@ export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout }: Worko
       <CardHeader className="pb-1">
         <div className="flex justify-between items-start">
           <button
-            onClick={() => setDescriptionDialogOpen(true)}
-            className="text-lg font-semibold text-left hover:text-primary cursor-pointer"
+            onClick={() => workout.description && setDescriptionDialogOpen(true)}
+            className={`text-lg font-semibold text-left ${workout.description ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
           >
             {workout.exercise_name}
           </button>
