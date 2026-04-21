@@ -25,17 +25,11 @@ const workout = (overrides: Partial<StoredWorkout> = {}): StoredWorkout => ({
 // parseDelimited
 // ---------------------------------------------------------------------------
 describe('parseDelimited', () => {
-  it('auto-detects tab delimiter from first line', () => {
+  it('splits tab-delimited headers and rows', () => {
     const input = 'block_id\tday\texercise_name\nWeek 1\tDay 1\tSquats';
     const { headers, rows } = parseDelimited(input);
     expect(headers).toEqual(['block_id', 'day', 'exercise_name']);
     expect(rows[0]).toEqual(['Week 1', 'Day 1', 'Squats']);
-  });
-
-  it('auto-detects comma delimiter from first line', () => {
-    const input = 'block_id,day,exercise_name\nWeek 1,Day 1,Squats';
-    const { headers } = parseDelimited(input);
-    expect(headers).toEqual(['block_id', 'day', 'exercise_name']);
   });
 
   it('filters rows with fewer columns than headers', () => {

@@ -109,13 +109,4 @@ describe('TSV import pipeline — full flow', () => {
     expect(errors).not.toContain('Row 2: Missing exercise_name'); // Squats is present
     expect(errors).toContain('Row 2: Missing description');
   });
-
-  it('handles CSV format as well as TSV', () => {
-    const csv = 'block_id,day,exercise_name,category,type,sets,rest,cues,description\nWeek 1,Day 1,Squats,Primary,weights,3,90,Heels,Stand and squat';
-    const { headers, rows } = parseDelimited(csv);
-    const workout = rowToWorkout(headers, rows[0]);
-    expect(workout.block_id).toBe('Week 1');
-    expect(workout.exercise_name).toBe('Squats');
-    expect(validateWorkoutRow(workout, 2)).toEqual([]);
-  });
 });

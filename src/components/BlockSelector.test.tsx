@@ -4,16 +4,22 @@ import { BlockSelector } from './BlockSelector';
 
 const mockNavigateBlock = vi.fn();
 
+let mockCtx: {
+  blocks: Array<{ id: number; block_id: string; block_name: string; is_active: number; created_at: Date }>;
+  activeBlock: { id: number; block_id: string; block_name: string; is_active: number; created_at: Date } | null;
+  navigateBlock: typeof mockNavigateBlock;
+} = {
+  blocks: [
+    { id: 1, block_id: 'Week 1', block_name: 'Week 1', is_active: 1, created_at: new Date() },
+    { id: 2, block_id: 'Week 2', block_name: 'Week 2', is_active: 0, created_at: new Date() },
+    { id: 3, block_id: 'Week 3', block_name: 'Week 3', is_active: 0, created_at: new Date() },
+  ],
+  activeBlock: { id: 1, block_id: 'Week 1', block_name: 'Week 1', is_active: 1, created_at: new Date() },
+  navigateBlock: mockNavigateBlock,
+};
+
 vi.mock('../context/BlockContext', () => ({
-  useBlock: () => ({
-    blocks: [
-      { id: 1, block_id: 'Week 1', block_name: 'Week 1', is_active: 1, created_at: new Date() },
-      { id: 2, block_id: 'Week 2', block_name: 'Week 2', is_active: 0, created_at: new Date() },
-      { id: 3, block_id: 'Week 3', block_name: 'Week 3', is_active: 0, created_at: new Date() },
-    ],
-    activeBlock: { id: 1, block_id: 'Week 1', block_name: 'Week 1', is_active: 1, created_at: new Date() },
-    navigateBlock: mockNavigateBlock,
-  }),
+  useBlock: () => mockCtx,
 }));
 
 describe('BlockSelector', () => {
@@ -42,5 +48,13 @@ describe('BlockSelector', () => {
     const buttons = screen.getAllByRole('button');
     fireEvent.click(buttons[buttons.length - 1]);
     expect(mockNavigateBlock).toHaveBeenCalledWith('next');
+  });
+
+  it('renders nothing when there are no blocks', () => {
+    const prev = mockCtx;
+    mockCtx = { blocks: [], activeBlock: null, navigateBlock: mockNavigateBlock };
+    const { container } = render(<BlockSelector />);
+    expect(container.firstChild).toBeNull();
+    mockCtx = prev;
   });
 });

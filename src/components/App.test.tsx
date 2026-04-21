@@ -42,9 +42,6 @@ vi.mock('../lib/database', () => ({
     importWorkouts: vi.fn().mockResolvedValue(undefined),
     exportBlockData: vi.fn().mockResolvedValue({ workouts: [], progress: [] }),
   },
-  initializeDefaultBlock: vi.fn().mockResolvedValue({
-    id: 1, block_id: 'Block 1', block_name: 'Block 1', is_active: 1, created_at: new Date(),
-  }),
   FitFlowDatabase: vi.fn(),
 }));
 
@@ -72,11 +69,12 @@ describe('App — tab content switching', () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('Config')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Config'));
-    await waitFor(() => expect(screen.getByText('Import Workouts')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Clear All Data')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('Workouts'));
     await waitFor(() => {
-      expect(screen.queryByText('Import Workouts')).not.toBeInTheDocument();
+      expect(screen.getByText('No workouts yet')).toBeInTheDocument();
+      expect(screen.queryByText('Clear All Data')).not.toBeInTheDocument();
     });
   });
 });

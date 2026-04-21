@@ -31,17 +31,13 @@ export function getCategoryColor(category: string): string {
   }
 }
 
-/**
- * Split TSV or CSV text into headers and value rows.
- * Auto-detects delimiter from the first line.
- */
+/** Split TSV text into headers and value rows. */
 export function parseDelimited(text: string): { headers: string[]; rows: string[][] } {
   const lines = text.split('\n').filter((line) => line.trim());
-  const delimiter = lines[0].includes('\t') ? '\t' : ',';
-  const headers = lines[0].split(delimiter).map((h) => h.trim());
+  const headers = lines[0].split('\t').map((h) => h.trim());
   const rows = lines
     .slice(1)
-    .map((line) => line.split(delimiter).map((v) => v.trim()))
+    .map((line) => line.split('\t').map((v) => v.trim()))
     .filter((values) => values.length >= headers.length);
   return { headers, rows };
 }

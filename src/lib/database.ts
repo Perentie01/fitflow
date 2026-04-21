@@ -14,7 +14,24 @@ export class FitFlowDatabase extends Dexie {
 
   constructor() {
     super('FitFlowDatabase');
-    
+
+    // Version 4: Drop the legacy seeded "Block 1" row so it can't overwrite real
+    // data during a cross-device restore. Only removes the seed when no workouts
+    // reference it, so users who genuinely named their block "Block 1" are preserved.
+    this.version(4).stores({
+      workouts: '++id, block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues, guidance, resistance, description',
+      progress: '++id, workout_id, set_number, completed_reps, completed_weight, completed_duration, completed_at, notes',
+      blocks: '++id, block_id, block_name, is_active, created_at'
+    }).upgrade(async tx => {
+      const workoutCount = await tx.table('workouts')
+        .where('block_id').equals('Block 1').count();
+      if (workoutCount === 0) {
+        await tx.table('blocks')
+          .where({ block_id: 'Block 1', block_name: 'Block 1' })
+          .delete();
+      }
+    });
+
     // Version 3: Add guidance, resistance, description (exercise setup/execution instructions) fields
     this.version(3).stores({
       workouts: '++id, block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues, guidance, resistance, description',
@@ -143,27 +160,4 @@ export const dbHelpers = {
     await db.blocks.clear();
   }
 };
-
-// Initialize with a default block if database is empty
-export async function initializeDefaultBlock(): Promise<Block> {
-  const existingBlocks = await db.blocks.toArray();
-  
-  if (existingBlocks.length === 0) {
-    const defaultBlock: Omit<Block, 'id'> = {
-      block_id: 'Block 1',
-      block_name: 'Block 1',
-      is_active: 1,
-      created_at: new Date()
-    };
-    
-    await dbHelpers.createBlock(defaultBlock);
-    return { ...defaultBlock, id: 1 };
-  }
-  
-  // Return active block or first block
-  const activeBlock = await dbHelpers.getActiveBlock();
-  if (activeBlock) return activeBlock;
-  
-  return existingBlocks[0];
-}
 

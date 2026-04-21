@@ -70,7 +70,7 @@ export function ConfigTab() {
       await dbHelpers.clearAllData();
 
       const { workoutData, blockIds } = pendingImport;
-      const blockIdArray = Array.from(blockIds);
+      const blockIdArray = Array.from(blockIds).sort();
 
       for (const blockId of blockIdArray) {
         const existing = await dbHelpers
@@ -87,6 +87,11 @@ export function ConfigTab() {
       }
 
       await dbHelpers.importWorkouts(workoutData);
+
+      if (blockIdArray.length > 0) {
+        await dbHelpers.setActiveBlock(blockIdArray[0]);
+      }
+
       await reloadBlocks();
 
       setShowImportSuccess(true);
@@ -180,30 +185,30 @@ export function ConfigTab() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Upload a TSV (recommended) or CSV file with your workout routines. Required columns:
+            Upload a TSV file with your workout routines. Required columns:
             block_id, day, exercise_name, category, type, sets, rest, cues. Optional: reps, weight,
             duration, guidance, resistance, description.
           </p>
           <div className="space-y-2">
             <input
               type="file"
-              accept=".tsv,.csv,.txt"
+              accept=".tsv,.txt"
               onChange={handleFileImport}
               className="hidden"
-              id="csv-upload"
+              id="tsv-upload"
               disabled={isLoading}
             />
             <Popover open={showImportSuccess}>
               <PopoverTrigger asChild>
                 <Button
-                  onClick={() => document.getElementById('csv-upload')?.click()}
+                  onClick={() => document.getElementById('tsv-upload')?.click()}
                   disabled={isLoading}
                   className="w-full"
                   variant="default"
                   size="sm"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Importing...' : 'Choose TSV/CSV File'}
+                  {isLoading ? 'Importing...' : 'Choose TSV File'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-2" side="top">
