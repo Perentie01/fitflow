@@ -65,8 +65,20 @@ export function WorkoutsTab({ onNavigateToConfig, compactMode = false, onCompact
 
   if (!activeBlock || blocks.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[70vh]">
+      <div className="flex flex-col items-center justify-center h-[70vh] gap-6 px-6">
         <h1 className="font-display text-4xl text-muted-foreground/40">FitFlow</h1>
+        <Card className="w-full max-w-sm">
+          <CardContent className="text-center py-8">
+            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="font-semibold mb-2">No workouts yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Import a TSV file to get started
+            </p>
+            <Button onClick={onNavigateToConfig} variant="default" size="sm">
+              Import Workouts
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -182,7 +194,7 @@ export function WorkoutsTab({ onNavigateToConfig, compactMode = false, onCompact
           <CardContent className="text-center py-8">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="font-semibold mb-2">No workouts for this block</h3>
-            <p className="text-muted-foreground mb-4">Import a TSV or CSV file to get started</p>
+            <p className="text-muted-foreground mb-4">Import a TSV file to get started</p>
             <Button onClick={onNavigateToConfig} variant="default" size="sm">
               Import Workouts
             </Button>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Block, dbHelpers, initializeDefaultBlock } from '../lib/database';
+import { Block, dbHelpers } from '../lib/database';
 
 interface BlockContextValue {
   blocks: Block[];
@@ -16,7 +16,7 @@ export function BlockProvider({ children }: { children: ReactNode }) {
   const [activeBlock, setActiveBlock] = useState<Block | null>(null);
 
   useEffect(() => {
-    initializeDefaultBlock().then(() => reloadBlocks()).catch(console.error);
+    reloadBlocks().catch(console.error);
   }, []);
 
   const reloadBlocks = async () => {
@@ -35,14 +35,19 @@ export function BlockProvider({ children }: { children: ReactNode }) {
 
     setBlocks(validBlocks);
 
-    const active = await dbHelpers.getActiveBlock();
-    if (active) {
-      setActiveBlock(active);
-    } else if (allBlocks.length > 0) {
-      setActiveBlock(allBlocks[0]);
-      await dbHelpers.setActiveBlock(allBlocks[0].block_id);
-    } else {
+    if (validBlocks.length === 0) {
       setActiveBlock(null);
+      return;
+    }
+
+    const active = await dbHelpers.getActiveBlock();
+    const activeIsValid = active && validBlocks.some((b) => b.block_id === active.block_id);
+
+    if (activeIsValid) {
+      setActiveBlock(active);
+    } else {
+      setActiveBlock(validBlocks[0]);
+      await dbHelpers.setActiveBlock(validBlocks[0].block_id);
     }
   };
 
