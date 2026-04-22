@@ -166,4 +166,49 @@ export const EXPORT_HEADERS = [
   'notes',
 ] as const;
 
+// ─── AI Coaching ────────────────────────────────────────────────────────────
+
+export const ChatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+});
+
+export type ChatMessage = z.infer<typeof ChatMessageSchema>;
+
+// Targeted: individual add / modify / delete operations on specific workouts
+const TargetedMatchSchema = z.object({
+  block_id: z.string().min(1),
+  day: z.string().min(1),
+  exercise_name: z.string().min(1),
+});
+
+const StoredWorkoutInputSchema = WorkoutBase.extend({
+  type: ExerciseTypeSchema,
+  reps: z.number().int().positive().optional(),
+  weight: z.number().nonnegative().optional(),
+  duration: z.number().positive().optional(),
+  distance: z.number().positive().optional(),
+});
+
+const TargetedOperationSchema = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('add'), workout: StoredWorkoutInputSchema }),
+  z.object({ op: z.literal('modify'), match: TargetedMatchSchema, patch: StoredWorkoutInputSchema.partial() }),
+  z.object({ op: z.literal('delete'), match: TargetedMatchSchema }),
+]);
+
+export const ProposedChangesSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('targeted'),
+    operations: z.array(TargetedOperationSchema).min(1),
+  }),
+  z.object({
+    type: z.literal('full'),
+    block_id: z.string().min(1),
+    workouts: z.array(StoredWorkoutInputSchema).min(1),
+  }),
+]);
+
+export type ProposedChanges = z.infer<typeof ProposedChangesSchema>;
+export type TargetedOperation = z.infer<typeof TargetedOperationSchema>;
+
 export const AI_COPY_TEMPLATE = `Generate a workout in TSV (Tab-Separated Values) format with these specifications:\n\nIMPORTANT: Use TAB characters (\\t) as delimiters, NOT commas. This allows text fields to contain commas and punctuation.\n\nUse this exact column order (15 columns). Every row must have all 15 columns — leave unused fields blank (empty between tabs):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\tdistance\\trest\\tcues\\tguidance\\tresistance\\tdescription\n\nRequired fields: block_id, day, exercise_name, category, type, sets\nType-specific required fields:\n- weights: reps required, weight optional (omit for bodyweight)\n- time: duration required (in minutes)\n- mindset: duration optional (in minutes)\n- cardio: duration and/or distance (distance in metres)\n\nCategories: Intent (mental prep), Warm-up, Primary, Secondary, Additional, Cool-down\nTypes: weights, time, mindset, cardio\n\nStart each workout with an Intent exercise (category=Intent, type=mindset) for mental preparation.\n\nUse guidance for execution notes like "70% 1RM" or "per side".\nUse resistance for non-weight exercises like "Red band" or "Bodyweight".\nUse description for step-by-step exercise setup and execution instructions (recommended for weights and time exercises). Use numbered steps and \\n for line breaks. Example:\n"1. Stand with feet shoulder-width apart, toes slightly out.\\n2. Brace your core and keep your chest up.\\n3. Lower until thighs are parallel to the ground.\\n4. Drive through heels to return to standing."\n\nExample rows (all 15 columns, separated by TAB characters):\nblock_id\\tday\\texercise_name\\tcategory\\ttype\\tsets\\treps\\tweight\\tduration\\tdistance\\trest\\tcues\\tguidance\\tresistance\\tdescription\nWeek 1\\tDay 1\\tFocus\\tIntent\\tmindset\\t1\\t\\t\\t2\\t\\t0\\tToday's goal: build power, focus on explosive movement\\t\\t\\t\nWeek 1\\tDay 1\\tSquats\\tPrimary\\tweights\\t3\\t10\\t100\\t\\t\\t90\\tKeep chest up, drive through heels\\t70% 1RM\\t\\t1. Stand with feet shoulder-width apart, toes slightly out.\\n2. Brace your core and keep your chest up.\\n3. Lower by pushing hips back and bending knees until thighs are parallel to the ground.\\n4. Drive through heels to return to standing. Squeeze glutes at the top.\nWeek 1\\tDay 1\\tBand Pull\\tAdditional\\tweights\\t3\\t15\\t\\t\\t\\t60\\tControl the movement, squeeze at the top\\t\\tRed band\\t\nWeek 1\\tDay 1\\t5K Run\\tPrimary\\tcardio\\t1\\t\\t\\t30\\t5000\\t0\\tMaintain steady pace, breathe rhythmically\\t\\t\\t`;
