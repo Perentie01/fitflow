@@ -24,40 +24,47 @@ Supabase DB (snapshot)     — single JSON blob per user, cross-device restore
 
 -----
 
-## Supabase Setup (one-time, manual)
+## Supabase Setup
 
-These steps are performed once in the Supabase dashboard before any code changes.
+Schema lives in `supabase/migrations/` and is applied to the hosted Postgres automatically via the Supabase GitHub integration. The baseline migration (`supabase/migrations/20260421101900_init.sql`) reproduces the `snapshots` table and RLS policies.
 
-1. Create a new Supabase project
-1. Enable Auth > Providers > Google (or Email magic link)
-1. Add the following to Auth > URL Configuration > Redirect URLs:
-- `https://<username>.github.io/fitflow`
-- `http://localhost:5173` (for local dev)
-1. Create the following table in the SQL editor:
+### One-time dashboard steps
 
-```sql
-create table snapshots (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  data jsonb not null,
-  saved_at timestamptz not null default now()
-);
+1. Create the Supabase project
+1. Enable Auth > Providers > Email (or Google)
+1. Add to Auth > URL Configuration > Redirect URLs:
+   - `https://<username>.github.io/fitflow`
+   - `http://localhost:5173` (local dev)
+1. Copy the project URL and anon key from Project Settings > API into the env vars below
 
-alter table snapshots enable row level security;
+### Connect the GitHub integration
 
-create policy "Users can read own snapshot"
-  on snapshots for select
-  using (auth.uid() = user_id);
+1. Dashboard → Project Settings → Integrations → **GitHub** → *Connect repo*
+1. Pick this repository; set the **production branch** to `main`
+1. Supabase Connect (not this project) will apply any new file in `supabase/migrations/` to the hosted DB when it lands on `main`
 
-create policy "Users can upsert own snapshot"
-  on snapshots for insert
-  with check (auth.uid() = user_id);
+### Baseline the existing database
 
-create policy "Users can update own snapshot"
-  on snapshots for update
-  using (auth.uid() = user_id);
+Because the `snapshots` table already exists in prod (it was created by hand before the integration was wired up), the initial migration must be marked applied so the integration does not try to re-run it:
+
+```bash
+pnpm exec supabase login
+pnpm exec supabase link --project-ref <your-project-ref>
+pnpm exec supabase migration repair --status applied 20260421101900
 ```
 
-1. Copy the project URL and anon key from Project Settings > API
+Run `pnpm db:diff` afterwards — empty output confirms the local migration tree matches the remote DB.
+
+### Day-to-day workflow
+
+```bash
+pnpm db:new add_something      # scaffold a new timestamped migration file
+# edit the generated file under supabase/migrations/
+pnpm db:diff                   # optional: preview what would change on remote
+git commit + push to main      # GitHub integration applies the migration
+```
+
+`pnpm db:pull` regenerates a migration from the current remote schema if someone edits the DB outside the repo; use it to get back in sync.
 
 -----
 
