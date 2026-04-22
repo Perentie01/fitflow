@@ -1,0 +1,14 @@
+# Supabase CLI config. Full reference:
+# https://supabase.com/docs/guides/local-development/cli/config
+#
+# Kept minimal because this project only uses hosted Supabase (via the
+# GitHub integration). The local dev stack (`supabase start`) is not
+# used; missing sections fall back to CLI defaults. Add sections back
+# as needed if that changes.
+
+project_id = "fitflow"
+
+[db]
+# Must match the remote Postgres major version so `supabase db diff`
+# spins up a matching shadow DB. Check with `SHOW server_version;`.
+major_version = 17
