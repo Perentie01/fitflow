@@ -115,6 +115,18 @@ export const dbHelpers = {
     return await db.workouts.where('block_id').equals(blockId).delete();
   },
 
+  async addWorkout(workout: Omit<Workout, 'id'>): Promise<number> {
+    return await db.workouts.add(workout);
+  },
+
+  async updateWorkoutById(id: number, patch: Partial<Workout>): Promise<void> {
+    await db.workouts.update(id, patch);
+  },
+
+  async deleteWorkoutById(id: number): Promise<void> {
+    await db.workouts.delete(id);
+  },
+
   // Progress operations
   async saveProgress(progressData: Omit<Progress, 'id' | 'completed_at'>): Promise<number> {
     return await db.progress.add({
