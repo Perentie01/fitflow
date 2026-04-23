@@ -37,17 +37,18 @@ export const CoachingTab = () => {
   }, [user]);
 
   const handleSend = async (text: string) => {
+    if (!user) return;
     const userMsg: ChatMessage = { role: 'user', content: text };
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setIsLoading(true);
-    saveChatMessage(userMsg);
+    saveChatMessage(userMsg, user.id);
 
     try {
       const response = await sendCoachMessage({ messages: nextMessages, model });
       const assistantMsg: ChatMessage = { role: 'assistant', content: response.reply };
       setMessages(prev => [...prev, assistantMsg]);
-      saveChatMessage(assistantMsg);
+      saveChatMessage(assistantMsg, user.id);
       if (response.proposed_changes) {
         setProposedChanges(response.proposed_changes);
       }
