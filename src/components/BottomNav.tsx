@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dumbbell, Settings, BarChart3 } from 'lucide-react';
+import { Dumbbell, MessageCircle, BarChart3 } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: string;
@@ -10,7 +10,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const tabs = [
     { id: 'progress', label: 'Progress', icon: BarChart3 },
     { id: 'workouts', label: 'Workouts', icon: Dumbbell },
-    { id: 'config', label: 'Config', icon: Settings }
+    { id: 'coaching', label: 'Coaching', icon: MessageCircle }
   ];
 
   return (
@@ -34,4 +34,3 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     </div>
   );
 }
-
