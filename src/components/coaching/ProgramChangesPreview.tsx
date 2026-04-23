@@ -1,4 +1,5 @@
-import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { ProposedChanges, TargetedOperation } from '../../lib/types';
 
 interface Props {
@@ -203,47 +204,67 @@ const FullView = ({ blockId, workouts }: { blockId: string; workouts: FullWorkou
   );
 };
 
-export const ProgramChangesPreview = ({ changes, onApply, onDiscard, isApplying }: Props) => (
-  <div
-    className="rounded-xl overflow-hidden"
-    style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}
-  >
-    <div
-      className="px-4 py-3 text-[13px] font-medium text-[var(--text-muted)] font-[Geist]"
-      style={{ borderBottom: '1px solid var(--border)' }}
-    >
-      Proposed changes
-    </div>
+export const ProgramChangesPreview = ({ changes, onApply, onDiscard, isApplying }: Props) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-    <div className="px-4 py-4 max-h-72 overflow-y-auto">
-      {changes.type === 'targeted' ? (
-        <TargetedView operations={changes.operations} />
-      ) : (
-        <FullView blockId={changes.block_id} workouts={changes.workouts} />
+  const changeCount =
+    changes.type === 'targeted' ? changes.operations.length : changes.workouts.length;
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}
+    >
+      <button
+        onClick={() => setIsCollapsed(c => !c)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        style={{ borderBottom: isCollapsed ? 'none' : '1px solid var(--border)' }}
+      >
+        <span className="text-[13px] font-medium text-[var(--text-muted)] font-[Geist]">
+          Proposed changes
+          <span className="ml-1.5 text-[12px] text-[var(--text-dim)]">({changeCount})</span>
+        </span>
+        {isCollapsed ? (
+          <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" />
+        ) : (
+          <ChevronUp className="h-4 w-4 text-[var(--text-muted)]" />
+        )}
+      </button>
+
+      {!isCollapsed && (
+        <>
+          <div className="px-4 py-4 max-h-72 overflow-y-auto">
+            {changes.type === 'targeted' ? (
+              <TargetedView operations={changes.operations} />
+            ) : (
+              <FullView blockId={changes.block_id} workouts={changes.workouts} />
+            )}
+          </div>
+
+          <div
+            className="flex gap-2 px-4 py-3"
+            style={{ borderTop: '1px solid var(--border)' }}
+          >
+            <button
+              onClick={onApply}
+              disabled={isApplying}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-md text-[13px] font-medium font-[Geist] disabled:opacity-50"
+              style={{ background: 'var(--accent)', color: '#111110' }}
+            >
+              {isApplying && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Apply
+            </button>
+            <button
+              onClick={onDiscard}
+              disabled={isApplying}
+              className="px-4 py-2 rounded-md text-[13px] font-medium font-[Geist] text-[var(--text-muted)] disabled:opacity-50"
+              style={{ background: 'var(--bg-raised)' }}
+            >
+              Discard
+            </button>
+          </div>
+        </>
       )}
     </div>
-
-    <div
-      className="flex gap-2 px-4 py-3"
-      style={{ borderTop: '1px solid var(--border)' }}
-    >
-      <button
-        onClick={onApply}
-        disabled={isApplying}
-        className="flex items-center gap-1.5 px-4 py-2 rounded-md text-[13px] font-medium font-[Geist] disabled:opacity-50"
-        style={{ background: 'var(--accent)', color: '#111110' }}
-      >
-        {isApplying && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-        Apply
-      </button>
-      <button
-        onClick={onDiscard}
-        disabled={isApplying}
-        className="px-4 py-2 rounded-md text-[13px] font-medium font-[Geist] text-[var(--text-muted)] disabled:opacity-50"
-        style={{ background: 'var(--bg-raised)' }}
-      >
-        Discard
-      </button>
-    </div>
-  </div>
-);
+  );
+};

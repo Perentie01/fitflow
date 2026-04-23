@@ -107,7 +107,7 @@ export const CoachingTab = () => {
       <ChatInput onSend={handleSend} isLoading={isLoading} />
 
       <Dialog open={configOpen} onOpenChange={setConfigOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="inset-0 top-0 left-0 translate-x-0 translate-y-0 rounded-none h-full max-h-full w-full max-w-full overflow-y-auto sm:inset-auto sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-2xl sm:max-h-[85vh] sm:rounded-lg">
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
           </DialogHeader>
