@@ -8,6 +8,11 @@
 
 project_id = "fitflow"
 
+[functions.coach]
+# Gateway-level JWT verification doesn't support ES256; we verify the token
+# ourselves inside the function via auth.getUser(jwt).
+verify_jwt = false
+
 [db]
 # Must match the remote Postgres major version so `supabase db diff`
 # spins up a matching shadow DB. Check with `SHOW server_version;`.
