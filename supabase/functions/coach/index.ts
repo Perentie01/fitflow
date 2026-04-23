@@ -117,6 +117,7 @@ const MATCH_SCHEMA = {
 };
 
 const PROPOSE_CHANGES_SCHEMA = {
+  type: 'object',
   oneOf: [
     {
       type: 'object',
