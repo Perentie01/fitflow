@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { WorkoutsTab } from './components/WorkoutsTab';
-import { ConfigTab } from './components/ConfigTab';
+import { CoachingTab } from './components/CoachingTab';
 import { ProgressTab } from './components/ProgressTab';
 import { BlockProvider, useBlock } from './context/BlockContext';
 import { AuthProvider } from './context/AuthContext';
@@ -42,13 +42,13 @@ function AppContent() {
       >
         {activeTab === 'workouts' && (
           <WorkoutsTab
-            onNavigateToConfig={() => handleTabChange('config')}
+            onNavigateToConfig={() => handleTabChange('coaching')}
             compactMode={compactMode}
             onCompactModeChange={handleCompactModeChange}
             workoutStartTime={workoutStartTime}
           />
         )}
-        {activeTab === 'config' && <ConfigTab />}
+        {activeTab === 'coaching' && <CoachingTab />}
         {activeTab === 'progress' && <ProgressTab />}
       </div>
 
