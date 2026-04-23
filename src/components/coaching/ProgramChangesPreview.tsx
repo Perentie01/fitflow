@@ -8,14 +8,14 @@ interface Props {
   isApplying: boolean;
 }
 
-function formatWorkoutSummary(w: {
+const formatWorkoutSummary = (w: {
   type: string;
   sets?: number;
   reps?: number;
   duration?: number;
   distance?: number;
   weight?: number;
-}): string {
+}): string => {
   const parts: string[] = [];
   if (w.sets !== undefined) parts.push(`${w.sets}×`);
   if (w.reps !== undefined) parts.push(`${w.reps} reps`);
@@ -23,16 +23,15 @@ function formatWorkoutSummary(w: {
   if (w.distance !== undefined) parts.push(`${w.distance}m`);
   if (w.weight !== undefined) parts.push(`${w.weight} kg`);
   return parts.join(' ');
-}
+};
 
-function formatPatch(patch: Record<string, unknown>): string {
-  return Object.entries(patch)
+const formatPatch = (patch: Record<string, unknown>): string =>
+  Object.entries(patch)
     .filter(([k]) => k !== 'block_id' && k !== 'day' && k !== 'exercise_name')
     .map(([k, v]) => `${k}: ${v}`)
     .join(', ');
-}
 
-function OpBadge({ op }: { op: 'add' | 'modify' | 'delete' }) {
+const OpBadge = ({ op }: { op: 'add' | 'modify' | 'delete' }) => {
   const styles = {
     add: 'text-[var(--success)] border-[var(--success)]',
     modify: 'text-[var(--accent-text)] border-[var(--accent)]',
@@ -46,12 +45,11 @@ function OpBadge({ op }: { op: 'add' | 'modify' | 'delete' }) {
       {labels[op]}
     </span>
   );
-}
+};
 
-function TargetedView({ operations }: { operations: TargetedOperation[] }) {
+const TargetedView = ({ operations }: { operations: TargetedOperation[] }) => {
   const byDay = operations.reduce<Record<string, TargetedOperation[]>>((acc, op) => {
-    const day =
-      op.op === 'add' ? op.workout.day : op.match.day;
+    const day = op.op === 'add' ? op.workout.day : op.match.day;
     if (!acc[day]) acc[day] = [];
     acc[day].push(op);
     return acc;
@@ -104,7 +102,6 @@ function TargetedView({ operations }: { operations: TargetedOperation[] }) {
                   </div>
                 );
               }
-              // delete
               return (
                 <div
                   key={i}
@@ -125,26 +122,22 @@ function TargetedView({ operations }: { operations: TargetedOperation[] }) {
       ))}
     </div>
   );
-}
+};
 
-function FullView({
-  blockId,
-  workouts,
-}: {
-  blockId: string;
-  workouts: Array<{
-    day: string;
-    exercise_name: string;
-    type: string;
-    sets?: number;
-    reps?: number;
-    duration?: number;
-    distance?: number;
-    weight?: number;
-    category: string;
-  }>;
-}) {
-  const byDay = workouts.reduce<Record<string, typeof workouts>>((acc, w) => {
+type FullWorkout = {
+  day: string;
+  exercise_name: string;
+  type: string;
+  sets?: number;
+  reps?: number;
+  duration?: number;
+  distance?: number;
+  weight?: number;
+  category: string;
+};
+
+const FullView = ({ blockId, workouts }: { blockId: string; workouts: FullWorkout[] }) => {
+  const byDay = workouts.reduce<Record<string, FullWorkout[]>>((acc, w) => {
     if (!acc[w.day]) acc[w.day] = [];
     acc[w.day].push(w);
     return acc;
@@ -208,51 +201,49 @@ function FullView({
       ))}
     </div>
   );
-}
+};
 
-export function ProgramChangesPreview({ changes, onApply, onDiscard, isApplying }: Props) {
-  return (
+export const ProgramChangesPreview = ({ changes, onApply, onDiscard, isApplying }: Props) => (
+  <div
+    className="rounded-xl overflow-hidden"
+    style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}
+  >
     <div
-      className="rounded-xl overflow-hidden"
-      style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}
+      className="px-4 py-3 text-[13px] font-medium text-[var(--text-muted)] font-[Geist]"
+      style={{ borderBottom: '1px solid var(--border)' }}
     >
-      <div
-        className="px-4 py-3 text-[13px] font-medium text-[var(--text-muted)] font-[Geist]"
-        style={{ borderBottom: '1px solid var(--border)' }}
-      >
-        Proposed changes
-      </div>
-
-      <div className="px-4 py-4 max-h-72 overflow-y-auto">
-        {changes.type === 'targeted' ? (
-          <TargetedView operations={changes.operations} />
-        ) : (
-          <FullView blockId={changes.block_id} workouts={changes.workouts} />
-        )}
-      </div>
-
-      <div
-        className="flex gap-2 px-4 py-3"
-        style={{ borderTop: '1px solid var(--border)' }}
-      >
-        <button
-          onClick={onApply}
-          disabled={isApplying}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-md text-[13px] font-medium font-[Geist] disabled:opacity-50"
-          style={{ background: 'var(--accent)', color: '#111110' }}
-        >
-          {isApplying && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          Apply
-        </button>
-        <button
-          onClick={onDiscard}
-          disabled={isApplying}
-          className="px-4 py-2 rounded-md text-[13px] font-medium font-[Geist] text-[var(--text-muted)] disabled:opacity-50"
-          style={{ background: 'var(--bg-raised)' }}
-        >
-          Discard
-        </button>
-      </div>
+      Proposed changes
     </div>
-  );
-}
+
+    <div className="px-4 py-4 max-h-72 overflow-y-auto">
+      {changes.type === 'targeted' ? (
+        <TargetedView operations={changes.operations} />
+      ) : (
+        <FullView blockId={changes.block_id} workouts={changes.workouts} />
+      )}
+    </div>
+
+    <div
+      className="flex gap-2 px-4 py-3"
+      style={{ borderTop: '1px solid var(--border)' }}
+    >
+      <button
+        onClick={onApply}
+        disabled={isApplying}
+        className="flex items-center gap-1.5 px-4 py-2 rounded-md text-[13px] font-medium font-[Geist] disabled:opacity-50"
+        style={{ background: 'var(--accent)', color: '#111110' }}
+      >
+        {isApplying && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+        Apply
+      </button>
+      <button
+        onClick={onDiscard}
+        disabled={isApplying}
+        className="px-4 py-2 rounded-md text-[13px] font-medium font-[Geist] text-[var(--text-muted)] disabled:opacity-50"
+        style={{ background: 'var(--bg-raised)' }}
+      >
+        Discard
+      </button>
+    </div>
+  </div>
+);
