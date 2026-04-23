@@ -7,12 +7,7 @@ export interface CoachResponse {
   proposed_changes?: ProposedChanges;
 }
 
-const ERROR_MESSAGES: Record<string, string> = {
-  401: 'Please sign in again',
-  429: 'Too many requests — try again in a moment',
-  NO_SNAPSHOT: 'No program found — import a program first',
-  NETWORK: 'Could not reach the coaching service',
-};
+const NETWORK_ERROR = 'Could not reach the coaching service';
 
 export async function sendCoachMessage(params: {
   messages: ChatMessage[];
@@ -26,16 +21,16 @@ export async function sendCoachMessage(params: {
     data = result.data;
     error = result.error;
   } catch {
-    throw new Error(ERROR_MESSAGES.NETWORK);
+    throw new Error(NETWORK_ERROR);
   }
 
   if (error) {
     const status = (error as { status?: number }).status;
-    if (status === 401) throw new Error(ERROR_MESSAGES[401]);
-    if (status === 429) throw new Error(ERROR_MESSAGES[429]);
+    if (status === 401) throw new Error('Please sign in again');
+    if (status === 429) throw new Error('Too many requests — try again in a moment');
     const message = (error as { message?: string }).message ?? '';
-    if (message.includes('NO_SNAPSHOT')) throw new Error(ERROR_MESSAGES.NO_SNAPSHOT);
-    throw new Error(ERROR_MESSAGES.NETWORK);
+    if (message.includes('NO_SNAPSHOT')) throw new Error('No program found — import a program first');
+    throw new Error(NETWORK_ERROR);
   }
 
   const response = data as { reply: string; proposed_changes?: unknown };
