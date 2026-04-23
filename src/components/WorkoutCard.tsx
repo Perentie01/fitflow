@@ -13,9 +13,10 @@ interface WorkoutCardProps {
   workout: Workout;
   onProgressUpdate?: () => void;
   onBeginWorkout?: () => void;
+  workoutState?: 'none' | 'active' | 'paused';
 }
 
-export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout }: WorkoutCardProps) {
+export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout, workoutState = 'none' }: WorkoutCardProps) {
   const [setProgress, setSetProgress] = useState<SetProgress[]>([]);
   const [isLogging, setIsLogging] = useState(false);
   const [showProgressForm, setShowProgressForm] = useState(false);
@@ -176,12 +177,13 @@ export function WorkoutCard({ workout, onProgressUpdate, onBeginWorkout }: Worko
 
         {workout.category === 'Intent' && onBeginWorkout && (
           <Button
-            onClick={onBeginWorkout}
-            variant="default"
+            onClick={workoutState === 'active' ? undefined : onBeginWorkout}
+            variant={workoutState === 'active' ? 'secondary' : 'default'}
             className="w-full gap-2"
+            disabled={workoutState === 'active'}
           >
             <Play className="h-4 w-4" />
-            Begin Workout
+            {workoutState === 'active' ? 'Workout in Progress' : workoutState === 'paused' ? 'Resume Workout' : 'Begin Workout'}
           </Button>
         )}
 

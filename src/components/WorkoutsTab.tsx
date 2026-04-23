@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, X } from 'lucide-react';
+import { Calendar, X, Pause, Play } from 'lucide-react';
 import { WorkoutCard } from './WorkoutCard';
 import { Carousel } from './Carousel';
 import { ScrollSnapContainer } from './ScrollSnapContainer';
@@ -12,15 +12,18 @@ import { useBlock } from '../context/BlockContext';
 import { dbHelpers, Workout } from '../lib/database';
 import { groupWorkoutsByCategory } from '../lib/workoutUtils';
 
-function useElapsedTime(startTime: number | null) {
-  const [elapsed, setElapsed] = useState(0);
+function useElapsedTime(startTime: number | null, frozenMs: number = 0) {
+  const [elapsed, setElapsed] = useState(Math.floor(frozenMs / 1000));
 
   useEffect(() => {
-    if (!startTime) { setElapsed(0); return; }
+    if (!startTime) {
+      setElapsed(Math.floor(frozenMs / 1000));
+      return;
+    }
     setElapsed(Math.floor((Date.now() - startTime) / 1000));
     const id = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
     return () => clearInterval(id);
-  }, [startTime]);
+  }, [startTime, frozenMs]);
 
   const hrs = Math.floor(elapsed / 3600);
   const mins = Math.floor((elapsed % 3600) / 60);
@@ -34,15 +37,19 @@ interface WorkoutsTabProps {
   onNavigateToConfig: () => void;
   compactMode?: boolean;
   onCompactModeChange?: (compact: boolean) => void;
+  onPauseWorkout?: () => void;
   workoutStartTime?: number | null;
+  isPaused?: boolean;
+  pausedElapsedMs?: number;
 }
 
-export function WorkoutsTab({ onNavigateToConfig, compactMode = false, onCompactModeChange, workoutStartTime = null }: WorkoutsTabProps) {
+export const WorkoutsTab = ({ onNavigateToConfig, compactMode = false, onCompactModeChange, onPauseWorkout, workoutStartTime = null, isPaused = false, pausedElapsedMs = 0 }: WorkoutsTabProps) => {
   const { activeBlock, blocks } = useBlock();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [availableDays, setAvailableDays] = useState<string[]>([]);
   const [selectedDay, setSelectedDay] = useState<string>('');
-  const elapsedDisplay = useElapsedTime(workoutStartTime);
+  const elapsedDisplay = useElapsedTime(workoutStartTime, pausedElapsedMs);
+  const workoutState = compactMode ? 'active' : isPaused ? 'paused' : 'none';
 
   useEffect(() => {
     if (activeBlock) {
@@ -88,24 +95,45 @@ export function WorkoutsTab({ onNavigateToConfig, compactMode = false, onCompact
 
   return (
     <div className="md:space-y-3">
-      {/* Compact header — mobile only, visible when workout started */}
+      {/* Compact header — mobile only, visible when workout started, sticky */}
       {compactMode && (
-        <div className="md:hidden flex items-center justify-between px-4 py-2 border-b border-border bg-card">
+        <div className="md:hidden sticky top-0 z-10 flex items-center justify-between px-4 py-2 border-b border-border bg-card">
           <div className="flex items-center gap-2 min-w-0">
             <span className="font-display text-lg truncate">{activeBlock?.block_name}</span>
             <span className="text-muted-foreground">·</span>
             <span className="text-sm font-medium text-muted-foreground truncate">{selectedDay}</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="font-clock text-sm text-muted-foreground/70">{elapsedDisplay}</span>
+            <button
+              onClick={() => onPauseWorkout?.()}
+              className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Pause workout"
+            >
+              <Pause className="h-4 w-4" />
+            </button>
             <button
               onClick={() => onCompactModeChange?.(false)}
               className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Exit compact mode"
+              aria-label="Exit workout mode"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Paused resume banner — mobile only */}
+      {isPaused && !compactMode && (
+        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-primary/10 border-b border-primary/20">
+          <div className="flex items-center gap-2">
+            <span className="font-clock text-sm text-primary">{elapsedDisplay}</span>
+            <span className="text-sm text-muted-foreground">paused</span>
+          </div>
+          <Button size="sm" variant="default" onClick={() => onCompactModeChange?.(true)} className="gap-1.5">
+            <Play className="h-3.5 w-3.5" />
+            Resume
+          </Button>
         </div>
       )}
 
@@ -151,6 +179,7 @@ export function WorkoutsTab({ onNavigateToConfig, compactMode = false, onCompact
                       workout={workout}
                       onProgressUpdate={() => {}}
                       onBeginWorkout={category === 'Intent' ? () => onCompactModeChange?.(true) : undefined}
+                      workoutState={category === 'Intent' ? workoutState : undefined}
                     />
                   ))}
                 </div>
@@ -178,9 +207,10 @@ export function WorkoutsTab({ onNavigateToConfig, compactMode = false, onCompact
                         workout={workout}
                         onProgressUpdate={() => {}}
                         onBeginWorkout={category === 'Intent' ? () => onCompactModeChange?.(true) : undefined}
+                        workoutState={category === 'Intent' ? workoutState : undefined}
                       />
                     )}
-                    className="w-[85vw] max-w-md"
+                    className="w-[93vw] max-w-[495px]"
                   />
                 </div>
               </ScrollSnapSection>
@@ -203,4 +233,4 @@ export function WorkoutsTab({ onNavigateToConfig, compactMode = false, onCompact
       )}
     </div>
   );
-}
+};

@@ -14,26 +14,50 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('workouts');
   const [compactMode, setCompactMode] = useState(false);
   const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [pausedElapsedMs, setPausedElapsedMs] = useState(0);
   const { reloadBlocks } = useBlock();
   useSync(reloadBlocks);
 
   const handleCompactModeChange = (compact: boolean) => {
     setCompactMode(compact);
-    setWorkoutStartTime(compact ? Date.now() : null);
+    if (compact) {
+      if (isPaused) {
+        setWorkoutStartTime(Date.now() - pausedElapsedMs);
+        setIsPaused(false);
+      } else {
+        setWorkoutStartTime(Date.now());
+        setPausedElapsedMs(0);
+      }
+    } else {
+      setWorkoutStartTime(null);
+      setIsPaused(false);
+      setPausedElapsedMs(0);
+    }
   };
 
-  // Exit compact mode when leaving workouts tab
+  const handlePauseWorkout = () => {
+    if (workoutStartTime !== null) {
+      setPausedElapsedMs(Date.now() - workoutStartTime);
+    }
+    setCompactMode(false);
+    setWorkoutStartTime(null);
+    setIsPaused(true);
+  };
+
   const handleTabChange = (tab: string) => {
     if (tab !== 'workouts') {
       setCompactMode(false);
       setWorkoutStartTime(null);
+      setIsPaused(false);
+      setPausedElapsedMs(0);
     }
     setActiveTab(tab);
   };
 
   return (
     <div className="h-dvh flex flex-col bg-background transition-colors overflow-hidden">
-      {!(compactMode && activeTab === 'workouts') && <Header />}
+      <Header />
 
       <div
         className={`flex-1 container mx-auto ${
@@ -45,14 +69,19 @@ function AppContent() {
             onNavigateToConfig={() => handleTabChange('coaching')}
             compactMode={compactMode}
             onCompactModeChange={handleCompactModeChange}
+            onPauseWorkout={handlePauseWorkout}
             workoutStartTime={workoutStartTime}
+            isPaused={isPaused}
+            pausedElapsedMs={pausedElapsedMs}
           />
         )}
         {activeTab === 'coaching' && <CoachingTab />}
         {activeTab === 'progress' && <ProgressTab />}
       </div>
 
-      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+      {!(compactMode && activeTab === 'workouts') && (
+        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+      )}
     </div>
   );
 }
