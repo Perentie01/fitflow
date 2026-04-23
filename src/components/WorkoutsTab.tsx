@@ -9,10 +9,11 @@ import { ScrollSnapContainer } from './ScrollSnapContainer';
 import { ScrollSnapSection } from './ScrollSnapSection';
 import { BlockSelector } from './BlockSelector';
 import { useBlock } from '../context/BlockContext';
+import { useWorkoutMode } from '../context/WorkoutModeContext';
 import { dbHelpers, Workout } from '../lib/database';
 import { groupWorkoutsByCategory } from '../lib/workoutUtils';
 
-function useElapsedTime(startTime: number | null, frozenMs: number = 0) {
+const useElapsedTime = (startTime: number | null, frozenMs: number = 0) => {
   const [elapsed, setElapsed] = useState(Math.floor(frozenMs / 1000));
 
   useEffect(() => {
@@ -31,19 +32,14 @@ function useElapsedTime(startTime: number | null, frozenMs: number = 0) {
   const pad = (n: number) => n.toString().padStart(2, '0');
 
   return hrs > 0 ? `${pad(hrs)}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
-}
+};
 
 interface WorkoutsTabProps {
   onNavigateToConfig: () => void;
-  compactMode?: boolean;
-  onCompactModeChange?: (compact: boolean) => void;
-  onPauseWorkout?: () => void;
-  workoutStartTime?: number | null;
-  isPaused?: boolean;
-  pausedElapsedMs?: number;
 }
 
-export const WorkoutsTab = ({ onNavigateToConfig, compactMode = false, onCompactModeChange, onPauseWorkout, workoutStartTime = null, isPaused = false, pausedElapsedMs = 0 }: WorkoutsTabProps) => {
+export const WorkoutsTab = ({ onNavigateToConfig }: WorkoutsTabProps) => {
+  const { compactMode, isPaused, workoutStartTime, pausedElapsedMs, setCompactMode, pauseWorkout } = useWorkoutMode();
   const { activeBlock, blocks } = useBlock();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [availableDays, setAvailableDays] = useState<string[]>([]);
@@ -95,7 +91,7 @@ export const WorkoutsTab = ({ onNavigateToConfig, compactMode = false, onCompact
 
   return (
     <div className="md:space-y-3">
-      {/* Compact header — mobile only, visible when workout started, sticky */}
+      {/* Compact header — replaces the app header during focus mode, sticky */}
       {compactMode && (
         <div className="md:hidden sticky top-0 z-10 flex items-center justify-between px-4 py-2 border-b border-border bg-card">
           <div className="flex items-center gap-2 min-w-0">
@@ -106,14 +102,14 @@ export const WorkoutsTab = ({ onNavigateToConfig, compactMode = false, onCompact
           <div className="flex items-center gap-2">
             <span className="font-clock text-sm text-muted-foreground/70">{elapsedDisplay}</span>
             <button
-              onClick={() => onPauseWorkout?.()}
+              onClick={pauseWorkout}
               className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               aria-label="Pause workout"
             >
               <Pause className="h-4 w-4" />
             </button>
             <button
-              onClick={() => onCompactModeChange?.(false)}
+              onClick={() => setCompactMode(false)}
               className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               aria-label="Exit workout mode"
             >
@@ -130,7 +126,7 @@ export const WorkoutsTab = ({ onNavigateToConfig, compactMode = false, onCompact
             <span className="font-clock text-sm text-primary">{elapsedDisplay}</span>
             <span className="text-sm text-muted-foreground">paused</span>
           </div>
-          <Button size="sm" variant="default" onClick={() => onCompactModeChange?.(true)} className="gap-1.5">
+          <Button size="sm" variant="default" onClick={() => setCompactMode(true)} className="gap-1.5">
             <Play className="h-3.5 w-3.5" />
             Resume
           </Button>
@@ -178,7 +174,7 @@ export const WorkoutsTab = ({ onNavigateToConfig, compactMode = false, onCompact
                       key={workout.id}
                       workout={workout}
                       onProgressUpdate={() => {}}
-                      onBeginWorkout={category === 'Intent' ? () => onCompactModeChange?.(true) : undefined}
+                      onBeginWorkout={category === 'Intent' ? () => setCompactMode(true) : undefined}
                       workoutState={category === 'Intent' ? workoutState : undefined}
                     />
                   ))}
@@ -206,7 +202,7 @@ export const WorkoutsTab = ({ onNavigateToConfig, compactMode = false, onCompact
                       <WorkoutCard
                         workout={workout}
                         onProgressUpdate={() => {}}
-                        onBeginWorkout={category === 'Intent' ? () => onCompactModeChange?.(true) : undefined}
+                        onBeginWorkout={category === 'Intent' ? () => setCompactMode(true) : undefined}
                         workoutState={category === 'Intent' ? workoutState : undefined}
                       />
                     )}

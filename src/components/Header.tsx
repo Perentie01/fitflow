@@ -1,8 +1,10 @@
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { useEffect } from 'react';
+import { useWorkoutMode } from '../context/WorkoutModeContext';
 
-export function Header() {
+export const Header = () => {
   const [darkMode, setDarkMode] = useLocalStorage<boolean>('darkMode', true);
+  const { compactMode } = useWorkoutMode();
 
   useEffect(() => {
     if (darkMode) {
@@ -11,6 +13,8 @@ export function Header() {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  if (compactMode) return null;
 
   return (
     <div className="bg-card border-b border-border px-4 py-3">
@@ -43,4 +47,4 @@ export function Header() {
       </div>
     </div>
   );
-}
+};
