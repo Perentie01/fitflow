@@ -2,6 +2,30 @@ import { supabase } from './supabase';
 import type { ChatMessage, ProposedChanges } from './types';
 import { ProposedChangesSchema } from './types';
 
+export const loadChatHistory = async (): Promise<ChatMessage[]> => {
+  const { data, error } = await supabase
+    .from('coach_messages')
+    .select('role, content')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.warn('[coach] failed to load history:', error.message);
+    return [];
+  }
+
+  return (data ?? []) as ChatMessage[];
+};
+
+export const saveChatMessage = async (message: ChatMessage): Promise<void> => {
+  const { error } = await supabase
+    .from('coach_messages')
+    .insert({ role: message.role, content: message.content });
+
+  if (error) {
+    console.warn('[coach] failed to save message:', error.message);
+  }
+};
+
 export interface CoachResponse {
   reply: string;
   proposed_changes?: ProposedChanges;
