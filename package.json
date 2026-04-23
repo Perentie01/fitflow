@@ -14,7 +14,10 @@
     "db:new": "supabase migration new",
     "db:diff": "supabase db diff --linked",
     "db:pull": "supabase db pull",
-    "db:push": "supabase db push --linked"
+    "db:push": "supabase db push --linked",
+    "supabase:start": "supabase start",
+    "supabase:functions:serve": "supabase functions serve coach --env-file .env.local",
+    "supabase:functions:deploy": "supabase functions deploy coach"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
