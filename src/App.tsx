@@ -7,51 +7,18 @@ import { ProgressTab } from './components/ProgressTab';
 import { BlockProvider, useBlock } from './context/BlockContext';
 import { AuthProvider } from './context/AuthContext';
 import { AuthGate } from './components/AuthGate';
+import { WorkoutModeProvider, useWorkoutMode } from './context/WorkoutModeContext';
 import { useSync } from './hooks/useSync';
 import './App.css';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('workouts');
-  const [compactMode, setCompactMode] = useState(false);
-  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
-  const [pausedElapsedMs, setPausedElapsedMs] = useState(0);
+  const { compactMode, resetWorkout } = useWorkoutMode();
   const { reloadBlocks } = useBlock();
   useSync(reloadBlocks);
 
-  const handleCompactModeChange = (compact: boolean) => {
-    setCompactMode(compact);
-    if (compact) {
-      if (isPaused) {
-        setWorkoutStartTime(Date.now() - pausedElapsedMs);
-        setIsPaused(false);
-      } else {
-        setWorkoutStartTime(Date.now());
-        setPausedElapsedMs(0);
-      }
-    } else {
-      setWorkoutStartTime(null);
-      setIsPaused(false);
-      setPausedElapsedMs(0);
-    }
-  };
-
-  const handlePauseWorkout = () => {
-    if (workoutStartTime !== null) {
-      setPausedElapsedMs(Date.now() - workoutStartTime);
-    }
-    setCompactMode(false);
-    setWorkoutStartTime(null);
-    setIsPaused(true);
-  };
-
   const handleTabChange = (tab: string) => {
-    if (tab !== 'workouts') {
-      setCompactMode(false);
-      setWorkoutStartTime(null);
-      setIsPaused(false);
-      setPausedElapsedMs(0);
-    }
+    if (tab !== 'workouts') resetWorkout();
     setActiveTab(tab);
   };
 
@@ -65,15 +32,7 @@ function AppContent() {
         } ${activeTab === 'workouts' ? 'md:px-4 md:py-4' : 'px-4 py-4'}`}
       >
         {activeTab === 'workouts' && (
-          <WorkoutsTab
-            onNavigateToConfig={() => handleTabChange('coaching')}
-            compactMode={compactMode}
-            onCompactModeChange={handleCompactModeChange}
-            onPauseWorkout={handlePauseWorkout}
-            workoutStartTime={workoutStartTime}
-            isPaused={isPaused}
-            pausedElapsedMs={pausedElapsedMs}
-          />
+          <WorkoutsTab onNavigateToConfig={() => handleTabChange('coaching')} />
         )}
         {activeTab === 'coaching' && <CoachingTab />}
         {activeTab === 'progress' && <ProgressTab />}
@@ -90,9 +49,11 @@ function App() {
   return (
     <AuthProvider>
       <BlockProvider>
-        <AuthGate>
-          <AppContent />
-        </AuthGate>
+        <WorkoutModeProvider>
+          <AuthGate>
+            <AppContent />
+          </AuthGate>
+        </WorkoutModeProvider>
       </BlockProvider>
     </AuthProvider>
   );
