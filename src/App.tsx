@@ -36,9 +36,9 @@ function AppContent() {
       {!(compactMode && activeTab === 'workouts') && <Header />}
 
       <div
-        className={`flex-1 overflow-y-auto container mx-auto ${
-          activeTab === 'workouts' ? 'md:px-4 md:py-4' : 'px-4 py-4'
-        }`}
+        className={`flex-1 container mx-auto ${
+          activeTab === 'coaching' ? 'overflow-hidden' : 'overflow-y-auto'
+        } ${activeTab === 'workouts' ? 'md:px-4 md:py-4' : 'px-4 py-4'}`}
       >
         {activeTab === 'workouts' && (
           <WorkoutsTab
