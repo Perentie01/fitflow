@@ -9,6 +9,7 @@
 // Response: { reply: string, proposed_changes?: ProposedChanges }.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.103.2';
+import Anthropic from 'npm:@anthropic-ai/sdk';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -116,65 +117,56 @@ const MATCH_SCHEMA = {
   required: ['block_id', 'day', 'exercise_name'],
 };
 
+// Anthropic does not support oneOf/anyOf/allOf at the top level of input_schema.
+// Flatten into a single object: `type` discriminates targeted vs full; other fields are optional.
 const PROPOSE_CHANGES_SCHEMA = {
   type: 'object',
-  oneOf: [
-    {
-      type: 'object',
-      description: 'Small, surgical edits to the active block.',
-      properties: {
-        type: { type: 'string', enum: ['targeted'] },
-        operations: {
-          type: 'array',
-          minItems: 1,
-          items: {
-            oneOf: [
-              {
-                type: 'object',
-                properties: {
-                  op: { type: 'string', enum: ['add'] },
-                  workout: WORKOUT_INPUT_SCHEMA,
-                },
-                required: ['op', 'workout'],
-              },
-              {
-                type: 'object',
-                properties: {
-                  op: { type: 'string', enum: ['modify'] },
-                  match: MATCH_SCHEMA,
-                  patch: WORKOUT_PATCH_SCHEMA,
-                },
-                required: ['op', 'match', 'patch'],
-              },
-              {
-                type: 'object',
-                properties: {
-                  op: { type: 'string', enum: ['delete'] },
-                  match: MATCH_SCHEMA,
-                },
-                required: ['op', 'match'],
-              },
-            ],
+  properties: {
+    type: {
+      type: 'string',
+      enum: ['targeted', 'full'],
+      description: 'Use "targeted" for individual edits; "full" to replace the entire block.',
+    },
+    operations: {
+      type: 'array',
+      description: 'Required when type="targeted". List of add/modify/delete operations.',
+      minItems: 1,
+      items: {
+        oneOf: [
+          {
+            type: 'object',
+            properties: { op: { type: 'string', enum: ['add'] }, workout: WORKOUT_INPUT_SCHEMA },
+            required: ['op', 'workout'],
           },
-        },
+          {
+            type: 'object',
+            properties: {
+              op: { type: 'string', enum: ['modify'] },
+              match: MATCH_SCHEMA,
+              patch: WORKOUT_PATCH_SCHEMA,
+            },
+            required: ['op', 'match', 'patch'],
+          },
+          {
+            type: 'object',
+            properties: { op: { type: 'string', enum: ['delete'] }, match: MATCH_SCHEMA },
+            required: ['op', 'match'],
+          },
+        ],
       },
-      required: ['type', 'operations'],
     },
-    {
-      type: 'object',
-      description: 'Full replacement of every workout in the active block.',
-      properties: {
-        type: { type: 'string', enum: ['full'] },
-        block_id: { type: 'string' },
-        workouts: {
-          type: 'array',
-          minItems: 1,
-          items: WORKOUT_INPUT_SCHEMA,
-        },
-      },
-      required: ['type', 'block_id', 'workouts'],
+    block_id: {
+      type: 'string',
+      description: 'Required when type="full". Must match the active block_id.',
     },
-  ],
+    workouts: {
+      type: 'array',
+      description: 'Required when type="full". Complete replacement workout list.',
+      minItems: 1,
+      items: WORKOUT_INPUT_SCHEMA,
+    },
+  },
+  required: ['type'],
 };
 
 const TOOL_DESCRIPTION =
@@ -342,38 +334,27 @@ async function callClaude(systemPrompt: string, messages: ChatMessage[]): Promis
   const key = Deno.env.get('ANTHROPIC_API_KEY');
   if (!key) throw new Error('ANTHROPIC_API_KEY not set');
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: systemPrompt,
-      tools: [
-        {
-          name: 'propose_changes',
-          description: TOOL_DESCRIPTION,
-          input_schema: PROPOSE_CHANGES_SCHEMA,
-        },
-      ],
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    }),
+  const client = new Anthropic({ apiKey: key });
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    system: systemPrompt,
+    tools: [
+      {
+        name: 'propose_changes',
+        description: TOOL_DESCRIPTION,
+        input_schema: PROPOSE_CHANGES_SCHEMA as Anthropic.Tool['input_schema'],
+      },
+    ],
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
   });
 
-  if (!res.ok) {
-    throw new Error(`Anthropic API ${res.status}: ${await res.text()}`);
-  }
-
-  const data = await res.json();
   let reply = '';
   let proposed_changes: unknown;
 
-  for (const block of data.content ?? []) {
-    if (block.type === 'text' && typeof block.text === 'string') {
+  for (const block of response.content) {
+    if (block.type === 'text') {
       reply += block.text;
     } else if (block.type === 'tool_use' && block.name === 'propose_changes') {
       proposed_changes = block.input;
