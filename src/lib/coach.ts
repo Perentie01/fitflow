@@ -16,11 +16,10 @@ export const loadChatHistory = async (): Promise<ChatMessage[]> => {
   return (data ?? []) as ChatMessage[];
 };
 
-export const saveChatMessage = async (message: ChatMessage): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
+export const saveChatMessage = async (message: ChatMessage, userId: string): Promise<void> => {
   const { error } = await supabase
     .from('coach_messages')
-    .insert({ role: message.role, content: message.content, user_id: user?.id });
+    .insert({ role: message.role, content: message.content, user_id: userId });
 
   if (error) {
     console.warn('[coach] failed to save message:', error.message);
