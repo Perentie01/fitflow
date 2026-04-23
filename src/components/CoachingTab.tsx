@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,7 @@ import { ChatThread } from './coaching/ChatThread';
 import { ChatInput } from './coaching/ChatInput';
 import { ModelSelector, getStoredModel } from './coaching/ModelSelector';
 import { ProgramChangesPreview } from './coaching/ProgramChangesPreview';
-import { sendCoachMessage } from '../lib/coach';
+import { sendCoachMessage, loadChatHistory, saveChatMessage } from '../lib/coach';
 import { applyProposedChanges } from '../lib/coachingApply';
 import { useBlock } from '../context/BlockContext';
 import { useAuth } from '../context/AuthContext';
@@ -31,16 +31,23 @@ export const CoachingTab = () => {
   const { reloadBlocks, activeBlock } = useBlock();
   const { user } = useAuth();
 
+  useEffect(() => {
+    if (!user) return;
+    loadChatHistory().then(setMessages);
+  }, [user]);
+
   const handleSend = async (text: string) => {
     const userMsg: ChatMessage = { role: 'user', content: text };
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setIsLoading(true);
+    saveChatMessage(userMsg);
 
     try {
       const response = await sendCoachMessage({ messages: nextMessages, model });
       const assistantMsg: ChatMessage = { role: 'assistant', content: response.reply };
       setMessages(prev => [...prev, assistantMsg]);
+      saveChatMessage(assistantMsg);
       if (response.proposed_changes) {
         setProposedChanges(response.proposed_changes);
       }
