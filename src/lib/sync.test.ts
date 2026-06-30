@@ -5,7 +5,7 @@ import { saveSnapshot, restoreSnapshot } from './sync'
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockInsert = vi.fn()
+const mockUpsert = vi.fn()
 const mockSelect = vi.fn()
 const mockEq = vi.fn()
 const mockOrder = vi.fn()
@@ -15,7 +15,7 @@ const mockSingle = vi.fn()
 vi.mock('./supabase', () => ({
   supabase: {
     from: vi.fn(() => ({
-      insert: mockInsert,
+      upsert: mockUpsert,
       select: mockSelect,
     })),
   },
@@ -39,13 +39,20 @@ vi.mock('./database', () => ({
 describe('saveSnapshot', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockInsert.mockResolvedValue({ error: null })
+
+    // Hash-check chain: select('data_hash').eq('user_id', userId).single()
+    // Default: no existing snapshot → always proceeds to upsert
+    mockSingle.mockResolvedValue({ data: null })
+    mockEq.mockReturnValue({ single: mockSingle })
+    mockSelect.mockReturnValue({ eq: mockEq })
+
+    mockUpsert.mockResolvedValue({ error: null })
     mockGetSnapshot.mockReturnValue({ blocks: mockBlocks, workouts: mockWorkouts, progress: mockProgress })
   })
 
-  it('inserts to the snapshots table with user_id and data', async () => {
+  it('upserts to the snapshots table with user_id and data', async () => {
     await saveSnapshot('user-123')
-    expect(mockInsert).toHaveBeenCalledWith(
+    expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: 'user-123',
         data: expect.objectContaining({
@@ -57,36 +64,43 @@ describe('saveSnapshot', () => {
     )
   })
 
-  it('includes a savedAt timestamp in the snapshot data', async () => {
+  it('includes a data_hash in the upsert payload', async () => {
     await saveSnapshot('user-123')
-    const [call] = mockInsert.mock.calls
-    expect(call[0].data.savedAt).toBeDefined()
-    expect(typeof call[0].data.savedAt).toBe('string')
+    const [call] = mockUpsert.mock.calls
+    expect(typeof call[0].data_hash).toBe('string')
+    expect(call[0].data_hash).toHaveLength(64) // SHA-256 hex
   })
 
   it('includes a label when provided', async () => {
     await saveSnapshot('user-123', 'before deload')
-    const [call] = mockInsert.mock.calls
+    const [call] = mockUpsert.mock.calls
     expect(call[0].label).toBe('before deload')
   })
 
   it('omits label key when not provided', async () => {
     await saveSnapshot('user-123')
-    const [call] = mockInsert.mock.calls
+    const [call] = mockUpsert.mock.calls
     expect(call[0]).not.toHaveProperty('label')
   })
 
-  it('logs an error to console when insert fails', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockInsert.mockResolvedValue({ error: { message: 'DB error' } })
+  it('skips upsert when data_hash matches the stored hash', async () => {
+    // First call to get the hash of the current snapshot
+    const snapshot = { blocks: mockBlocks, workouts: mockWorkouts, progress: mockProgress }
+    const bytes = new TextEncoder().encode(JSON.stringify(snapshot))
+    const buf = await crypto.subtle.digest('SHA-256', bytes)
+    const existingHash = Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+
+    mockSingle.mockResolvedValue({ data: { data_hash: existingHash } })
+
     await saveSnapshot('user-123')
-    expect(consoleSpy).toHaveBeenCalledWith('Snapshot save failed:', expect.objectContaining({ message: 'DB error' }))
-    consoleSpy.mockRestore()
+    expect(mockUpsert).not.toHaveBeenCalled()
   })
 
-  it('does not throw when insert fails', async () => {
-    mockInsert.mockResolvedValue({ error: { message: 'DB error' } })
-    await expect(saveSnapshot('user-123')).resolves.toBeUndefined()
+  it('throws when upsert fails', async () => {
+    mockUpsert.mockResolvedValue({ error: { message: 'DB error' } })
+    await expect(saveSnapshot('user-123')).rejects.toThrow('Snapshot save failed: DB error')
   })
 })
 

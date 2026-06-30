@@ -36,7 +36,7 @@ export async function saveSnapshot(userId: string, label?: string): Promise<void
   if (label !== undefined) row.label = label;
 
   const { error } = await supabase.from('snapshots').upsert(row);
-  if (error) console.error('Snapshot save failed:', error);
+  if (error) throw new Error(`Snapshot save failed: ${error.message}`);
 }
 
 export async function restoreSnapshot(userId: string): Promise<boolean> {
