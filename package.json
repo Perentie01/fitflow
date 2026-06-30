@@ -15,6 +15,7 @@
     "db:diff": "supabase db diff --linked",
     "db:pull": "supabase db pull",
     "db:push": "supabase db push --linked",
+    "db:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > src/lib/database.types.ts",
     "supabase:start": "supabase start",
     "supabase:functions:serve": "supabase functions serve coach --env-file .env.local",
     "supabase:functions:deploy": "supabase functions deploy coach"
