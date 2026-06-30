@@ -5,41 +5,32 @@ import { saveSnapshot, restoreSnapshot } from './sync'
 // Mocks
 // ---------------------------------------------------------------------------
 
-// Mock Supabase client
-const mockUpsert = vi.fn()
+const mockInsert = vi.fn()
 const mockSelect = vi.fn()
 const mockEq = vi.fn()
+const mockOrder = vi.fn()
+const mockLimit = vi.fn()
 const mockSingle = vi.fn()
 
 vi.mock('./supabase', () => ({
   supabase: {
     from: vi.fn(() => ({
-      upsert: mockUpsert,
+      insert: mockInsert,
       select: mockSelect,
     })),
   },
 }))
 
-// Mock Dexie database
+const mockInitStore = vi.fn()
+const mockGetSnapshot = vi.fn()
+
 const mockBlocks = [{ id: 1, block_id: 'B1', block_name: 'Block 1', is_active: 1, created_at: new Date() }]
-const mockWorkouts = [{ id: 1, block_id: 'B1', day: 'Day 1', exercise_name: 'Squat', category: 'Primary', type: 'weights', sets: 3, rest: 60, description: 'Squat down' }]
+const mockWorkouts = [{ id: 1, block_id: 'B1', day: 'Day 1', exercise_name: 'Squat', category: 'Primary', type: 'weights', sets: 3, rest: 60 }]
 const mockProgress = [{ id: 1, workout_id: 1, set_number: 1, completed_reps: 10, completed_at: new Date() }]
 
 vi.mock('./database', () => ({
-  db: {
-    blocks: {
-      toArray: vi.fn(async () => mockBlocks),
-      bulkPut: vi.fn(async () => {}),
-    },
-    workouts: {
-      toArray: vi.fn(async () => mockWorkouts),
-      bulkPut: vi.fn(async () => {}),
-    },
-    progress: {
-      toArray: vi.fn(async () => mockProgress),
-      bulkPut: vi.fn(async () => {}),
-    },
-  },
+  initStore: (...args: unknown[]) => mockInitStore(...args),
+  getSnapshot: () => mockGetSnapshot(),
 }))
 
 // ---------------------------------------------------------------------------
@@ -48,20 +39,13 @@ vi.mock('./database', () => ({
 describe('saveSnapshot', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUpsert.mockResolvedValue({ error: null })
+    mockInsert.mockResolvedValue({ error: null })
+    mockGetSnapshot.mockReturnValue({ blocks: mockBlocks, workouts: mockWorkouts, progress: mockProgress })
   })
 
-  it('reads all three tables from IndexedDB', async () => {
-    const { db } = await import('./database')
+  it('inserts to the snapshots table with user_id and data', async () => {
     await saveSnapshot('user-123')
-    expect(db.blocks.toArray).toHaveBeenCalled()
-    expect(db.workouts.toArray).toHaveBeenCalled()
-    expect(db.progress.toArray).toHaveBeenCalled()
-  })
-
-  it('upserts to the snapshots table with user_id and data', async () => {
-    await saveSnapshot('user-123')
-    expect(mockUpsert).toHaveBeenCalledWith(
+    expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: 'user-123',
         data: expect.objectContaining({
@@ -75,21 +59,33 @@ describe('saveSnapshot', () => {
 
   it('includes a savedAt timestamp in the snapshot data', async () => {
     await saveSnapshot('user-123')
-    const [call] = mockUpsert.mock.calls
+    const [call] = mockInsert.mock.calls
     expect(call[0].data.savedAt).toBeDefined()
     expect(typeof call[0].data.savedAt).toBe('string')
   })
 
-  it('logs an error to console when upsert fails', async () => {
+  it('includes a label when provided', async () => {
+    await saveSnapshot('user-123', 'before deload')
+    const [call] = mockInsert.mock.calls
+    expect(call[0].label).toBe('before deload')
+  })
+
+  it('omits label key when not provided', async () => {
+    await saveSnapshot('user-123')
+    const [call] = mockInsert.mock.calls
+    expect(call[0]).not.toHaveProperty('label')
+  })
+
+  it('logs an error to console when insert fails', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockUpsert.mockResolvedValue({ error: { message: 'DB error' } })
+    mockInsert.mockResolvedValue({ error: { message: 'DB error' } })
     await saveSnapshot('user-123')
     expect(consoleSpy).toHaveBeenCalledWith('Snapshot save failed:', expect.objectContaining({ message: 'DB error' }))
     consoleSpy.mockRestore()
   })
 
-  it('does not throw when upsert fails', async () => {
-    mockUpsert.mockResolvedValue({ error: { message: 'DB error' } })
+  it('does not throw when insert fails', async () => {
+    mockInsert.mockResolvedValue({ error: { message: 'DB error' } })
     await expect(saveSnapshot('user-123')).resolves.toBeUndefined()
   })
 })
@@ -104,24 +100,29 @@ describe('restoreSnapshot', () => {
       data: { data: { blocks: mockBlocks, workouts: mockWorkouts, progress: mockProgress } },
       error: null,
     })
-    mockEq.mockReturnValue({ single: mockSingle })
+    mockLimit.mockReturnValue({ single: mockSingle })
+    mockOrder.mockReturnValue({ limit: mockLimit })
+    mockEq.mockReturnValue({ order: mockOrder })
     mockSelect.mockReturnValue({ eq: mockEq })
   })
 
-  it('queries the snapshots table for the given user_id', async () => {
+  it('queries the snapshots table ordered by saved_at desc', async () => {
     const { supabase } = await import('./supabase')
     await restoreSnapshot('user-456')
     expect(supabase.from).toHaveBeenCalledWith('snapshots')
     expect(mockSelect).toHaveBeenCalledWith('data')
     expect(mockEq).toHaveBeenCalledWith('user_id', 'user-456')
+    expect(mockOrder).toHaveBeenCalledWith('saved_at', { ascending: false })
+    expect(mockLimit).toHaveBeenCalledWith(1)
   })
 
-  it('bulk-puts all three tables into IndexedDB on success', async () => {
-    const { db } = await import('./database')
+  it('calls initStore with data from the latest snapshot', async () => {
     await restoreSnapshot('user-456')
-    expect(db.blocks.bulkPut).toHaveBeenCalledWith(mockBlocks)
-    expect(db.workouts.bulkPut).toHaveBeenCalledWith(mockWorkouts)
-    expect(db.progress.bulkPut).toHaveBeenCalledWith(mockProgress)
+    expect(mockInitStore).toHaveBeenCalledWith({
+      blocks: mockBlocks,
+      workouts: mockWorkouts,
+      progress: mockProgress,
+    })
   })
 
   it('returns true when a snapshot exists and is restored', async () => {
@@ -141,12 +142,9 @@ describe('restoreSnapshot', () => {
     expect(result).toBe(false)
   })
 
-  it('does not write to IndexedDB when no snapshot is found', async () => {
-    const { db } = await import('./database')
+  it('does not call initStore when no snapshot is found', async () => {
     mockSingle.mockResolvedValue({ data: null, error: null })
     await restoreSnapshot('user-456')
-    expect(db.blocks.bulkPut).not.toHaveBeenCalled()
-    expect(db.workouts.bulkPut).not.toHaveBeenCalled()
-    expect(db.progress.bulkPut).not.toHaveBeenCalled()
+    expect(mockInitStore).not.toHaveBeenCalled()
   })
 })

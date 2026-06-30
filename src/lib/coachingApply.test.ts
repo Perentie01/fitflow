@@ -20,23 +20,14 @@ const SQUAT: StoredWorkout & { id: number } = {
   cues: '',
 };
 
-const mockFirst = vi.fn();
-const mockWhere = vi.fn<(criteria: Record<string, unknown>) => { first: typeof mockFirst }>(
-  () => ({ first: mockFirst }),
-);
-
 vi.mock('./database', () => ({
-  db: {
-    workouts: {
-      where: (criteria: Record<string, unknown>) => mockWhere(criteria),
-    },
-  },
   dbHelpers: {
     addWorkout: vi.fn(async () => 1),
     updateWorkoutById: vi.fn(async () => {}),
     deleteWorkoutById: vi.fn(async () => {}),
     deleteWorkoutsByBlock: vi.fn(async () => 0),
     importWorkouts: vi.fn(async () => 0),
+    findWorkout: vi.fn(async () => undefined),
   },
 }));
 
@@ -76,7 +67,7 @@ describe('applyProposedChanges — targeted', () => {
 
   it('modifies a workout by resolving match to id then calling updateWorkoutById', async () => {
     const { dbHelpers } = await import('./database');
-    mockFirst.mockResolvedValueOnce(SQUAT);
+    vi.mocked(dbHelpers.findWorkout).mockResolvedValueOnce(SQUAT);
 
     const changes: ProposedChanges = {
       type: 'targeted',
@@ -91,7 +82,7 @@ describe('applyProposedChanges — targeted', () => {
 
     await applyProposedChanges(changes, 'Block 1', reloadBlocks, saveSnapshot, 'user-1');
 
-    expect(mockWhere).toHaveBeenCalledWith({
+    expect(dbHelpers.findWorkout).toHaveBeenCalledWith({
       block_id: 'Block 1',
       day: 'Day 1',
       exercise_name: 'Squat',
@@ -102,7 +93,7 @@ describe('applyProposedChanges — targeted', () => {
 
   it('skips modify when no matching workout is found', async () => {
     const { dbHelpers } = await import('./database');
-    mockFirst.mockResolvedValueOnce(undefined);
+    vi.mocked(dbHelpers.findWorkout).mockResolvedValueOnce(undefined);
 
     const changes: ProposedChanges = {
       type: 'targeted',
@@ -122,7 +113,7 @@ describe('applyProposedChanges — targeted', () => {
 
   it('deletes a workout by resolving match to id then calling deleteWorkoutById', async () => {
     const { dbHelpers } = await import('./database');
-    mockFirst.mockResolvedValueOnce(SQUAT);
+    vi.mocked(dbHelpers.findWorkout).mockResolvedValueOnce(SQUAT);
 
     const changes: ProposedChanges = {
       type: 'targeted',
@@ -142,7 +133,7 @@ describe('applyProposedChanges — targeted', () => {
 
   it('applies multiple mixed operations in order', async () => {
     const { dbHelpers } = await import('./database');
-    mockFirst
+    vi.mocked(dbHelpers.findWorkout)
       .mockResolvedValueOnce(SQUAT) // for modify
       .mockResolvedValueOnce(SQUAT); // for delete
 
@@ -236,7 +227,8 @@ describe('applyProposedChanges — side effects', () => {
   });
 
   it('calls reloadBlocks and saveSnapshot once after a targeted apply', async () => {
-    mockFirst.mockResolvedValueOnce(SQUAT);
+    const { dbHelpers } = await import('./database');
+    vi.mocked(dbHelpers.findWorkout).mockResolvedValueOnce(SQUAT);
 
     const changes: ProposedChanges = {
       type: 'targeted',
