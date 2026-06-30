@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Block, dbHelpers } from '../lib/database';
+import { useAuth } from './AuthContext';
+import { saveSnapshot } from '../lib/sync';
 
 interface BlockContextValue {
   blocks: Block[];
@@ -7,6 +9,7 @@ interface BlockContextValue {
   selectBlock: (block: Block) => void;
   navigateBlock: (direction: 'prev' | 'next') => void;
   reloadBlocks: () => Promise<void>;
+  createBlock: (name: string) => Promise<void>;
 }
 
 const BlockContext = createContext<BlockContextValue | null>(null);
@@ -14,6 +17,7 @@ const BlockContext = createContext<BlockContextValue | null>(null);
 export function BlockProvider({ children }: { children: ReactNode }) {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [activeBlock, setActiveBlock] = useState<Block | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     reloadBlocks().catch(console.error);
@@ -21,17 +25,7 @@ export function BlockProvider({ children }: { children: ReactNode }) {
 
   const reloadBlocks = async () => {
     const allBlocks = await dbHelpers.getAllBlocks();
-
-    const blocksWithWorkouts = await Promise.all(
-      allBlocks.map(async (block) => {
-        const workouts = await dbHelpers.getWorkoutsByBlock(block.block_id);
-        return workouts.length > 0 ? block : null;
-      }),
-    );
-
-    const validBlocks = blocksWithWorkouts
-      .filter((b): b is Block => b !== null)
-      .sort((a, b) => a.block_name.localeCompare(b.block_name));
+    const validBlocks = allBlocks.sort((a, b) => a.block_name.localeCompare(b.block_name));
 
     setBlocks(validBlocks);
 
@@ -66,8 +60,17 @@ export function BlockProvider({ children }: { children: ReactNode }) {
     selectBlock(blocks[newIndex]);
   };
 
+  const createBlock = async (name: string) => {
+    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const block_id = `${slug}-${Date.now()}`;
+    await dbHelpers.createBlock({ block_id, block_name: name, is_active: 0, created_at: new Date() });
+    await dbHelpers.setActiveBlock(block_id);
+    await reloadBlocks();
+    if (user) await saveSnapshot(user.id);
+  };
+
   return (
-    <BlockContext.Provider value={{ blocks, activeBlock, selectBlock, navigateBlock, reloadBlocks }}>
+    <BlockContext.Provider value={{ blocks, activeBlock, selectBlock, navigateBlock, reloadBlocks, createBlock }}>
       {children}
     </BlockContext.Provider>
   );
