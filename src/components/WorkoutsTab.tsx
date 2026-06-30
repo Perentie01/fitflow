@@ -70,6 +70,7 @@ export const WorkoutsTab = ({ onNavigateToConfig }: WorkoutsTabProps) => {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] gap-6 px-6">
         <h1 className="font-display text-4xl text-muted-foreground/40">FitFlow</h1>
+        <BlockSelector />
         <Card className="w-full max-w-sm">
           <CardContent className="text-center py-8">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -77,7 +78,7 @@ export const WorkoutsTab = ({ onNavigateToConfig }: WorkoutsTabProps) => {
             <p className="text-muted-foreground mb-4">
               Import a TSV file to get started
             </p>
-            <Button onClick={onNavigateToConfig} variant="default" size="sm">
+            <Button className="" onClick={onNavigateToConfig} variant="default" size="sm">
               Import Workouts
             </Button>
           </CardContent>
@@ -219,8 +220,10 @@ export const WorkoutsTab = ({ onNavigateToConfig }: WorkoutsTabProps) => {
         <Card>
           <CardContent className="text-center py-8">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold mb-2">No workouts for this block</h3>
-            <p className="text-muted-foreground mb-4">Import a TSV file to get started</p>
+            <h3 className="font-semibold mb-2">This block is empty</h3>
+            <p className="text-muted-foreground mb-4">
+              Ask the coach to generate workouts for it, or import a TSV file.
+            </p>
             <Button onClick={onNavigateToConfig} variant="default" size="sm">
               Import Workouts
             </Button>
