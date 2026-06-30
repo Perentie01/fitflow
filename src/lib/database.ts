@@ -1,175 +1,141 @@
-import Dexie from 'dexie';
 import type { StoredWorkout, WorkoutRow, Progress, Block } from './types';
 
-// Dexie returns plain objects so we use the flattened StoredWorkout type.
-// Use WorkoutSchema for strict discriminated-union validation at import time.
 export type Workout = StoredWorkout;
 export type { Progress, Block };
 
-// Define the database schema
-export class FitFlowDatabase extends Dexie {
-  workouts!: Dexie.Table<Workout, number>;
-  progress!: Dexie.Table<Progress, number>;
-  blocks!: Dexie.Table<Block, number>;
+// Module-level in-memory store. Populated from Supabase on login via initStore().
+let _blocks: Block[] = [];
+let _workouts: Workout[] = [];
+let _progress: Progress[] = [];
 
-  constructor() {
-    super('FitFlowDatabase');
+let _nextWorkoutId = 1;
+let _nextProgressId = 1;
+let _nextBlockId = 1;
 
-    // Version 4: Drop the legacy seeded "Block 1" row so it can't overwrite real
-    // data during a cross-device restore. Only removes the seed when no workouts
-    // reference it, so users who genuinely named their block "Block 1" are preserved.
-    this.version(4).stores({
-      workouts: '++id, block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues, guidance, resistance, description',
-      progress: '++id, workout_id, set_number, completed_reps, completed_weight, completed_duration, completed_at, notes',
-      blocks: '++id, block_id, block_name, is_active, created_at'
-    }).upgrade(async tx => {
-      const workoutCount = await tx.table('workouts')
-        .where('block_id').equals('Block 1').count();
-      if (workoutCount === 0) {
-        await tx.table('blocks')
-          .where({ block_id: 'Block 1', block_name: 'Block 1' })
-          .delete();
-      }
-    });
+export function initStore(data: { blocks: Block[]; workouts: Workout[]; progress: Progress[] }) {
+  _blocks = data.blocks ?? [];
+  _workouts = data.workouts ?? [];
+  _progress = data.progress ?? [];
 
-    // Version 3: Add guidance, resistance, description (exercise setup/execution instructions) fields
-    this.version(3).stores({
-      workouts: '++id, block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues, guidance, resistance, description',
-      progress: '++id, workout_id, set_number, completed_reps, completed_weight, completed_duration, completed_at, notes',
-      blocks: '++id, block_id, block_name, is_active, created_at'
-    });
-    
-    // Version 2: Migrated from weeks to blocks
-    this.version(2).stores({
-      workouts: '++id, block_id, day, exercise_name, category, type, sets, reps, weight, duration, rest, cues',
-      progress: '++id, workout_id, set_number, completed_reps, completed_weight, completed_duration, completed_at, notes',
-      blocks: '++id, block_id, block_name, is_active, created_at'
-    }).upgrade(async tx => {
-      // Migration: rename week_id to block_id in workouts
-      const workouts = await tx.table('workouts').toArray();
-      await tx.table('workouts').clear();
-      
-      const migratedWorkouts = workouts.map(w => ({
-        ...w,
-        block_id: (w as any).week_id || (w as any).block_id,
-        week_id: undefined
-      }));
-      
-      await tx.table('workouts').bulkAdd(migratedWorkouts);
-      
-      // Migration: convert weeks to blocks
-      const weeks = await tx.table('weeks').toArray();
-      await tx.table('blocks').clear();
-      
-      const migratedBlocks = weeks.map(w => ({
-        block_id: (w as any).week_id,
-        block_name: (w as any).week_id,
-        is_active: (w as any).is_active,
-        created_at: new Date()
-      }));
-      
-      if (migratedBlocks.length > 0) {
-        await tx.table('blocks').bulkAdd(migratedBlocks);
-      }
-    });
-  }
+  const maxWorkoutId = _workouts.reduce((m, w) => Math.max(m, w.id ?? 0), 0);
+  const maxProgressId = _progress.reduce((m, p) => Math.max(m, p.id ?? 0), 0);
+  const maxBlockId = _blocks.reduce((m, b) => Math.max(m, b.id ?? 0), 0);
+  _nextWorkoutId = maxWorkoutId + 1;
+  _nextProgressId = maxProgressId + 1;
+  _nextBlockId = maxBlockId + 1;
 }
 
-// Create database instance
-export const db = new FitFlowDatabase();
+export function getSnapshot() {
+  return { blocks: _blocks, workouts: _workouts, progress: _progress };
+}
 
-// Helper functions for database operations
 export const dbHelpers = {
   // Block operations
   async createBlock(blockData: Omit<Block, 'id'>): Promise<number> {
-    return await db.blocks.add(blockData);
+    const id = _nextBlockId++;
+    _blocks.push({ ...blockData, id });
+    return id;
   },
 
   async getActiveBlock(): Promise<Block | undefined> {
-    return await db.blocks.where('is_active').equals(1).first();
+    return _blocks.find(b => b.is_active === 1);
   },
 
   async getAllBlocks(): Promise<Block[]> {
-    return await db.blocks.orderBy('created_at').reverse().toArray();
+    return [..._blocks].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   },
 
   async setActiveBlock(blockId: string): Promise<void> {
-    await db.blocks.where('is_active').equals(1).modify({ is_active: 0 });
-    await db.blocks.where('block_id').equals(blockId).modify({ is_active: 1 });
+    _blocks = _blocks.map(b => ({ ...b, is_active: b.block_id === blockId ? 1 : 0 }));
   },
 
   // Workout operations
   async importWorkouts(workouts: WorkoutRow[]): Promise<number> {
-    return await db.workouts.bulkAdd(workouts as Omit<Workout, 'id'>[]);
+    for (const w of workouts) {
+      const id = _nextWorkoutId++;
+      _workouts.push({ ...w, id } as Workout);
+    }
+    return workouts.length;
   },
 
   async getWorkoutsByBlock(blockId: string): Promise<Workout[]> {
-    return await db.workouts.where('block_id').equals(blockId).toArray();
+    return _workouts.filter(w => w.block_id === blockId);
   },
 
   async getWorkoutsByBlockAndDay(blockId: string, day: string): Promise<Workout[]> {
-    return await db.workouts.where({ block_id: blockId, day: day }).toArray();
+    return _workouts.filter(w => w.block_id === blockId && w.day === day);
   },
 
   async deleteWorkoutsByBlock(blockId: string): Promise<number> {
-    return await db.workouts.where('block_id').equals(blockId).delete();
+    const before = _workouts.length;
+    _workouts = _workouts.filter(w => w.block_id !== blockId);
+    return before - _workouts.length;
   },
 
   async addWorkout(workout: Omit<Workout, 'id'>): Promise<number> {
-    return await db.workouts.add(workout);
+    const id = _nextWorkoutId++;
+    _workouts.push({ ...workout, id } as Workout);
+    return id;
   },
 
   async updateWorkoutById(id: number, patch: Partial<Workout>): Promise<void> {
-    await db.workouts.update(id, patch);
+    _workouts = _workouts.map(w => (w.id === id ? { ...w, ...patch } : w));
   },
 
   async deleteWorkoutById(id: number): Promise<void> {
-    await db.workouts.delete(id);
+    _workouts = _workouts.filter(w => w.id !== id);
+  },
+
+  async findWorkout(match: {
+    block_id: string;
+    day: string;
+    exercise_name: string;
+  }): Promise<Workout | undefined> {
+    return _workouts.find(
+      w =>
+        w.block_id === match.block_id &&
+        w.day === match.day &&
+        w.exercise_name === match.exercise_name
+    );
   },
 
   // Progress operations
   async saveProgress(progressData: Omit<Progress, 'id' | 'completed_at'>): Promise<number> {
-    return await db.progress.add({
-      ...progressData,
-      completed_at: new Date()
-    });
+    const id = _nextProgressId++;
+    _progress.push({ ...progressData, id, completed_at: new Date() });
+    return id;
   },
 
   async getProgressByWorkout(workoutId: number): Promise<Progress[]> {
-    return await db.progress.where('workout_id').equals(workoutId).toArray();
+    return _progress.filter(p => p.workout_id === workoutId);
   },
 
   async getProgressByBlock(blockId: string): Promise<Progress[]> {
-    const workouts = await this.getWorkoutsByBlock(blockId);
-    const workoutIds = workouts.map(w => w.id!);
-    return await db.progress.where('workout_id').anyOf(workoutIds).toArray();
+    const workoutIds = new Set(_workouts.filter(w => w.block_id === blockId).map(w => w.id!));
+    return _progress.filter(p => workoutIds.has(p.workout_id));
   },
 
   async getProgressWithWorkoutDetails(): Promise<Array<Progress & { workout?: Workout }>> {
-    const allProgress = await db.progress.toArray();
-    const progressWithDetails = await Promise.all(
-      allProgress.map(async (progress) => {
-        const workout = await db.workouts.get(progress.workout_id);
-        return { ...progress, workout };
-      })
-    );
-    return progressWithDetails.sort((a, b) => 
-      new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
-    );
+    const workoutById = new Map(_workouts.map(w => [w.id!, w]));
+    return [..._progress]
+      .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+      .map(p => ({ ...p, workout: workoutById.get(p.workout_id) }));
   },
 
-  // Export operations
-  async exportBlockData(blockId: string): Promise<{ workouts: Workout[], progress: Progress[] }> {
+  async exportBlockData(blockId: string): Promise<{ workouts: Workout[]; progress: Progress[] }> {
     const workouts = await this.getWorkoutsByBlock(blockId);
     const progress = await this.getProgressByBlock(blockId);
     return { workouts, progress };
   },
 
-  // Utility functions
   async clearAllData(): Promise<void> {
-    await db.workouts.clear();
-    await db.progress.clear();
-    await db.blocks.clear();
-  }
+    _blocks = [];
+    _workouts = [];
+    _progress = [];
+    _nextWorkoutId = 1;
+    _nextProgressId = 1;
+    _nextBlockId = 1;
+  },
 };
-
