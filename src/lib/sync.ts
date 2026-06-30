@@ -1,10 +1,17 @@
 import { supabase } from './supabase';
 import { initStore, getSnapshot } from './database';
+import type { Block, StoredWorkout, Progress } from './types';
+import type { Json } from './database.types';
+
+// Shape stored inside the snapshots.data jsonb column.
+interface SnapshotData {
+  blocks?: Block[];
+  workouts?: StoredWorkout[];
+  progress?: Progress[];
+}
 
 export interface SnapshotMeta {
-  id: string;
   saved_at: string;
-  label: string | null;
 }
 
 const hashData = async (data: unknown): Promise<string> => {
@@ -29,13 +36,14 @@ export async function saveSnapshot(userId: string, label?: string): Promise<void
 
   const row: Record<string, unknown> = {
     user_id: userId,
-    data,
+    data: data as unknown as Json,
     data_hash: hash,
     saved_at: new Date().toISOString(),
   };
   if (label !== undefined) row.label = label;
 
-  const { error } = await supabase.from('snapshots').upsert(row);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('snapshots').upsert(row as any);
   if (error) throw new Error(`Snapshot save failed: ${error.message}`);
 }
 
@@ -50,10 +58,11 @@ export async function restoreSnapshot(userId: string): Promise<boolean> {
 
   if (error || !data) return false;
 
+  const snapshot = data.data as unknown as SnapshotData;
   initStore({
-    blocks: data.data.blocks ?? [],
-    workouts: data.data.workouts ?? [],
-    progress: data.data.progress ?? [],
+    blocks: snapshot.blocks ?? [],
+    workouts: snapshot.workouts ?? [],
+    progress: snapshot.progress ?? [],
   });
   return true;
 }
@@ -61,27 +70,10 @@ export async function restoreSnapshot(userId: string): Promise<boolean> {
 export async function listSnapshots(userId: string): Promise<SnapshotMeta[]> {
   const { data, error } = await supabase
     .from('snapshots')
-    .select('id, saved_at, label')
+    .select('saved_at')
     .eq('user_id', userId)
     .order('saved_at', { ascending: false });
 
   if (error || !data) return [];
-  return data as SnapshotMeta[];
-}
-
-export async function restoreSnapshotById(id: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('snapshots')
-    .select('data')
-    .eq('id', id)
-    .single();
-
-  if (error || !data) return false;
-
-  initStore({
-    blocks: data.data.blocks ?? [],
-    workouts: data.data.workouts ?? [],
-    progress: data.data.progress ?? [],
-  });
-  return true;
+  return data;
 }
