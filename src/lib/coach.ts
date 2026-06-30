@@ -59,11 +59,16 @@ export async function sendCoachMessage(params: {
 
   const response = data as { reply: string; proposed_changes?: unknown };
 
+  console.log('[coach] response received', {
+    hasProposedChanges: response.proposed_changes !== undefined,
+    replyLength: response.reply?.length,
+  });
+
   if (response.proposed_changes !== undefined) {
     const parsed = ProposedChangesSchema.safeParse(response.proposed_changes);
     if (!parsed.success) {
-      console.warn('[coach] proposed_changes failed schema validation:', parsed.error);
-      return { reply: response.reply };
+      console.error('[coach] proposed_changes failed schema validation:', parsed.error);
+      throw new Error('Coach returned malformed proposed changes — see console for details');
     }
     return { reply: response.reply, proposed_changes: parsed.data };
   }

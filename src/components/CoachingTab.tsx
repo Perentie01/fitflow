@@ -52,10 +52,10 @@ export const CoachingTab = () => {
       if (response.proposed_changes) {
         setProposedChanges(response.proposed_changes);
       }
-    } catch {
+    } catch (err) {
       const errorMsg: ChatMessage = {
         role: 'assistant',
-        content: 'Something went wrong. Please try again.',
+        content: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
@@ -75,6 +75,13 @@ export const CoachingTab = () => {
         user.id,
       );
       setProposedChanges(null);
+    } catch (err) {
+      console.error('[coach] applyProposedChanges failed:', err);
+      const errorMsg: ChatMessage = {
+        role: 'assistant',
+        content: `Failed to apply changes: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsApplying(false);
     }

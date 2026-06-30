@@ -117,8 +117,35 @@ const MATCH_SCHEMA = {
   required: ['block_id', 'day', 'exercise_name'],
 };
 
-// Anthropic does not support oneOf/anyOf/allOf at the top level of input_schema.
-// Flatten into a single object: `type` discriminates targeted vs full; other fields are optional.
+// Anthropic does not support oneOf/anyOf/allOf anywhere in input_schema.
+// Flatten every discriminated union into a single object with a discriminator field.
+// `type` discriminates targeted vs full; `op` discriminates add/modify/delete.
+const OPERATION_SCHEMA = {
+  type: 'object',
+  description:
+    'A single workout operation. Set "op" to add/modify/delete, then fill in the required fields: ' +
+    '"add" needs "workout"; "modify" needs "match" and "patch"; "delete" needs "match".',
+  properties: {
+    op: {
+      type: 'string',
+      enum: ['add', 'modify', 'delete'],
+    },
+    workout: {
+      ...WORKOUT_INPUT_SCHEMA,
+      description: 'Required for op="add". The full workout to add.',
+    },
+    match: {
+      ...MATCH_SCHEMA,
+      description: 'Required for op="modify" and op="delete". Identifies the existing workout.',
+    },
+    patch: {
+      ...WORKOUT_PATCH_SCHEMA,
+      description: 'Required for op="modify". Partial fields to update on the matched workout.',
+    },
+  },
+  required: ['op'],
+};
+
 const PROPOSE_CHANGES_SCHEMA = {
   type: 'object',
   properties: {
@@ -131,29 +158,7 @@ const PROPOSE_CHANGES_SCHEMA = {
       type: 'array',
       description: 'Required when type="targeted". List of add/modify/delete operations.',
       minItems: 1,
-      items: {
-        oneOf: [
-          {
-            type: 'object',
-            properties: { op: { type: 'string', enum: ['add'] }, workout: WORKOUT_INPUT_SCHEMA },
-            required: ['op', 'workout'],
-          },
-          {
-            type: 'object',
-            properties: {
-              op: { type: 'string', enum: ['modify'] },
-              match: MATCH_SCHEMA,
-              patch: WORKOUT_PATCH_SCHEMA,
-            },
-            required: ['op', 'match', 'patch'],
-          },
-          {
-            type: 'object',
-            properties: { op: { type: 'string', enum: ['delete'] }, match: MATCH_SCHEMA },
-            required: ['op', 'match'],
-          },
-        ],
-      },
+      items: OPERATION_SCHEMA,
     },
     block_id: {
       type: 'string',
